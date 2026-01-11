@@ -1,172 +1,193 @@
-# AI-Ready Repository Template
+# Retro Mobile Pong Game - AI Agent Prompt
 
-A template repository for GitHub Codespaces that provides pre-configured AI agent prompts and automatic development environment setup. Use this as a starting point for new repositories or link it to your Codespaces settings.
+> **Role:** Act as a Senior Game Developer and Full-Stack Web Engineer. Build a complete, production-ready game with clean, modular code and comprehensive testing.
 
-## 🚀 Features
+## Quick Summary
 
-- **AI Agent Prompts** - Pre-configured prompts for onboarding AI assistants to any codebase
-- **Automatic Extension Installation** - Essential VS Code extensions installed on Codespace start
-- **Multi-Platform Support** - Works with Cursor, GitHub Copilot, Gemini Code Assist, and more
-- **Verification Scripts** - Built-in testing to ensure template integrity
+Build a **web-based Pong game** optimized for mobile devices with a retro synthwave aesthetic. The game includes single-player, local multiplayer, and online multiplayer modes with power-ups, leaderboards, and persistent player stats.
 
-## 📁 Repository Structure
+## Technology Stack
+
+| Component | Technology | Hosting |
+|-----------|------------|---------|
+| Frontend | HTML5 Canvas, CSS3, Vanilla JS | GitHub Pages (free) |
+| Backend | Node.js, Express, Socket.io | Railway (free tier) |
+| Database | PostgreSQL | Supabase (free tier) |
+| Audio | Web Audio API | - |
+
+## Documentation Files
+
+Read these files in order, or reference specific sections as needed:
+
+| File | Description | When to Read |
+|------|-------------|--------------|
+| [`01-gameplay.md`](./01-gameplay.md) | Core mechanics, controls, game modes, power-ups | Phase 1, 4, 5 |
+| [`02-ui-design.md`](./02-ui-design.md) | Synthwave visuals, color palette, typography, screens | Phase 3 |
+| [`03-audio.md`](./03-audio.md) | Sound effects, background music, Web Audio API | Phase 3 |
+| [`04-database.md`](./04-database.md) | Supabase setup, SQL schema, leaderboard queries | Phase 6 |
+| [`05-backend.md`](./05-backend.md) | Node.js server code, Socket.io events, API endpoints | Phase 7 |
+| [`06-frontend-multiplayer.md`](./06-frontend-multiplayer.md) | Client-side multiplayer integration | Phase 8 |
+| [`07-deployment.md`](./07-deployment.md) | Railway, GitHub Pages, environment variables | Phase 7, 9 |
+| [`08-file-structure.md`](./08-file-structure.md) | Project organization, file purposes | Reference |
+
+## Implementation Phases
 
 ```
-/
-├── AI_REPO_GUIDE.md              # Canonical AI reference (create in target repos)
-├── AGENTS.md                     # Root agent instructions
-├── AGENT.md                      # Deprecated redirect
-├── README.md                     # This file
-├── install.sh                    # Codespace bootstrap script
-├── test.sh                       # Template verification script
-│
-├── .cursor/
-│   └── BUGBOT.md                 # Cursor Bugbot PR review rules
-│
-├── .gemini/
-│   └── styleguide.md             # Gemini Code Assist style guide
-│
-└── .github/
-    ├── copilot-instructions.md   # GitHub Copilot instructions (auto-read)
-    ├── agents/
-    │   └── judge.agent.md        # GitHub Copilot plan/diff gate agent
-    └── prompts/
-        ├── copilot-onboarding.md # Guide for customizing copilot-instructions.md
-        └── repo-onboarding.md    # Comprehensive repo onboarding prompt
+Phase 1:  Core Pong gameplay (single-player vs AI)     → See: 01-gameplay.md
+Phase 2:  Mobile touch controls, responsive design     → See: 01-gameplay.md
+Phase 3:  Synthwave visuals and sound effects          → See: 02-ui-design.md, 03-audio.md
+Phase 4:  Power-ups and special game modes             → See: 01-gameplay.md
+Phase 5:  Local multiplayer (same device)              → See: 01-gameplay.md
+Phase 6:  Database setup (Supabase)                    → See: 04-database.md
+Phase 7:  Backend deployment (Railway)                 → See: 05-backend.md, 07-deployment.md
+Phase 8:  Online multiplayer integration               → See: 06-frontend-multiplayer.md
+Phase 9:  Frontend deployment (GitHub Pages)           → See: 07-deployment.md
+Phase 10: Testing, bug fixes, polish                   → See: Final Checklist below
 ```
 
-## 🤖 AI Agent Files
+## Key Requirements Summary
 
-### Agent Instructions (auto-loaded by AI tools)
+### Must Have
+- [ ] 60fps gameplay on mobile devices
+- [ ] Touch controls (drag to move paddle)
+- [ ] Keyboard controls for desktop (W/S, Arrow keys)
+- [ ] Single-player with 4 AI difficulty levels
+- [ ] Local 2-player on same device
+- [ ] Online multiplayer with matchmaking
+- [ ] Private room codes for friends
+- [ ] Global leaderboard with ELO ranking
+- [ ] PWA support (installable, offline single-player)
 
-| File | Platform | Purpose |
-|------|----------|---------|
-| `AGENTS.md` | Most AI tools | Root instructions, references AI_REPO_GUIDE.md |
-| `.github/copilot-instructions.md` | GitHub Copilot | Copilot-specific instructions |
-| `.cursor/BUGBOT.md` | Cursor Bugbot | Strict PR review rules with verification |
-| `.gemini/styleguide.md` | Gemini Code Assist | PR review with severity labels |
-| `.github/agents/judge.agent.md` | GitHub Copilot | Plan-gate + diff-gate reviewer |
+### Visual Style
+- Synthwave/retrowave aesthetic
+- Neon colors (pink, cyan, purple) on dark background
+- Glowing effects, particle trails
+- Retro pixel fonts
+- Optional CRT scanline effect
 
-### Prompts (user-triggered)
+### Audio
+- 8-bit/chiptune sound effects
+- Sounds for: paddle hit, wall bounce, score, power-ups
+- Optional synthwave background music
 
-| File | Purpose |
-|------|---------|
-| `.github/prompts/copilot-onboarding.md` | Guide for customizing copilot-instructions.md |
-| `.github/prompts/repo-onboarding.md` | Comprehensive onboarding workflow |
+## Test Plan
 
-## 📦 Included VS Code Extensions
+Before deployment, test the following:
 
-| Extension | Description |
-|-----------|-------------|
-| [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev) | AI coding assistant |
-| [Live Preview](https://marketplace.visualstudio.com/items?itemName=ms-vscode.live-server) | Live server for web development |
-| [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) | Code formatter |
-| [Live Share](https://marketplace.visualstudio.com/items?itemName=ms-vsliveshare.vsliveshare) | Real-time collaborative development |
+| Category | Test Cases |
+|----------|------------|
+| **Mobile Devices** | iOS Safari 13+, Android Chrome 80+, Samsung Internet |
+| **Orientation** | Portrait → Landscape transitions mid-game |
+| **Touch Controls** | Responsiveness, multi-touch (local multiplayer), gesture prevention |
+| **Audio** | Sounds play after first interaction, volume controls work, mute persists |
+| **PWA** | Installs to home screen, works offline (single-player), updates correctly |
+| **Multiplayer Sync** | Paddle positions sync, ball state matches, scores agree |
+| **Latency** | Playable up to 150ms latency, graceful degradation above |
+| **Disconnection** | Reconnection window, forfeit handling, room cleanup |
+| **Leaderboard** | Updates after match, displays correctly, pagination works |
+| **Power-ups** | All 10 power-ups function correctly, duration timers accurate |
+| **AI Difficulty** | Each level feels distinct, Impossible is beatable (barely) |
+| **Battery** | Reduced effects when battery low (if implemented) |
 
-## 🔧 Setup
+---
 
-### Option 1: Use as Codespaces Dotfiles
+## Final Checklist
 
-1. Go to [GitHub Codespaces settings](https://github.com/settings/codespaces)
-2. Under "Dotfiles", select this repository
-3. Check "Automatically install dotfiles"
-4. Your next Codespace will automatically run `install.sh`
+Before considering the project complete:
 
-### Option 2: Copy to New Repository
+- [ ] Game runs at 60fps on mid-range mobile devices
+- [ ] Touch controls work on iOS Safari and Android Chrome
+- [ ] All 9 sound effects implemented and playing
+- [ ] AI works at Easy/Medium/Hard/Impossible levels
+- [ ] Local multiplayer works (split-screen touch zones)
+- [ ] Backend server deployed and accessible on Railway
+- [ ] Supabase database tables created and connected
+- [ ] Online matchmaking finds random opponents
+- [ ] Room codes work for private matches
+- [ ] Leaderboard displays top 100 players
+- [ ] Player stats persist between sessions
+- [ ] PWA installs to home screen
+- [ ] Offline mode works for single-player
+- [ ] README.md includes live demo URLs
 
-1. Clone this repository
-2. Copy desired files to your new project
-3. Customize `install.sh` with your preferred extensions
-4. Create an `AI_REPO_GUIDE.md` specific to your project
+## Quick Reference: Environment Variables
 
-## ✅ Verification
-
-Run the verification script to ensure all template files are present and valid:
-
-```bash
-./test.sh
+### Railway (Backend)
+```
+PORT=3001                    # Auto-set by Railway
+FRONTEND_URL=https://[username].github.io/pong-game
+SUPABASE_URL=https://[project].supabase.co
+SUPABASE_SERVICE_KEY=eyJ...  # Keep secret!
 ```
 
-Expected output:
-```
-========================================
-Template Repository Verification
-========================================
-
-Checking required files...
-✓ AI_REPO_GUIDE.md exists
-✓ AGENTS.md exists
-...
-
-========================================
-Summary
-========================================
-Passed: 15
-Warnings: 0
-Failed: 0
-
-Template verification PASSED
+### Frontend (config.js)
+```javascript
+const CONFIG = {
+  BACKEND_URL: 'https://[app].up.railway.app',
+  SUPABASE_URL: 'https://[project].supabase.co',
+  SUPABASE_ANON_KEY: 'eyJ...'  // Public, read-only
+};
 ```
 
-## 🧪 Testing Your Setup
+## Questions?
 
-### Manual Verification
+If you need clarification on any section, reference the specific file number and section heading. For example:
+- "Clarify 01-gameplay.md → Power-Up System"
+- "Clarify 05-backend.md → Socket Events"
 
-```bash
-# Check all files exist
-ls -la AI_REPO_GUIDE.md AGENTS.md install.sh test.sh
+---
 
-# Validate shell script syntax
-bash -n install.sh
-bash -n test.sh
+## ✅ Verification Checkpoints
 
-# Run the test suite
-./test.sh
+Each documentation file ends with a verification checkpoint. After reading each file:
 
-# Test install script (safe to run locally)
-bash install.sh
+1. **Answer the checkpoint questions** to confirm you've read the full content
+2. **Record your answers** in `CHECKPOINTS.md` (create this file in the project root)
+3. **Use the exact format** specified in each checkpoint
+
+### CHECKPOINTS.md Template
+
+Create this file and add your responses as you complete each documentation file:
+
+```markdown
+# Agent Verification Responses
+
+## README.md
+- Verified: ✓
+- Deployment targets: [Frontend: ___, Backend: ___, Database: ___]
+- Implementation phases: [___]
+- Win score: [First to ___ points]
+
+## 01-gameplay.md
+- Verified: ✓
+- AI difficulties: [___, ___, ___, ___]
+- Power-ups: [___ total, examples: ___]
+- Touch zones: [Left half → ___, Right half → ___]
+- Player 1 keys: [___]
+
+## 02-ui-design.md
+- Verified: ✓
+- Neon pink hex: [___]
+- Title font: [___]
+- UI screens: [___]
+- Paddle colors: [P1: ___, P2: ___]
+
+(Continue for each file...)
 ```
 
-### In a Codespace
+---
 
-1. Create a new Codespace with this as your dotfiles repo
-2. Check that extensions are installed: `code --list-extensions`
-3. Verify prompts are copied to workspace
+## ✅ Verification Checkpoint: README.md
 
-## 📝 Customization
+After reading this README, confirm your understanding by answering:
 
-### Adding Extensions
+1. What are the three deployment targets? (Frontend, Backend, Database)
+2. How many implementation phases are there?
+3. What is the winning score in a standard match?
 
-Edit `install.sh` to add more extensions:
-
-```bash
-EXTENSIONS=(
-    "your.extension-id"
-    # ... existing extensions
-)
+**Response Format:**
 ```
-
-### Adding Prompts
-
-1. Create new prompt files in `.github/prompts/`
-2. Update `install.sh` to copy them if needed
-3. Update `test.sh` to verify them
-
-### Platform-Specific Files
-
-- **Cursor**: Add files to `.cursor/`
-- **Gemini**: Add files to `.gemini/`
-- **GitHub Copilot**: Add files to `.github/agents/` or `.github/prompts/`
-
-## 📋 Best Practices
-
-When using this template in a new repository:
-
-1. **Create AI_REPO_GUIDE.md** - Document your project's specific structure, commands, and conventions
-2. **Keep AGENTS.md minimal** - It should just point to AI_REPO_GUIDE.md
-3. **Update prompts** - Customize prompts for your project's needs
-4. **Run tests** - Use `./test.sh` to verify your customizations
-
-## 📄 License
-
-MIT - Feel free to fork and customize for your own workflow!
+README.md verified ✓
+Answers: [Frontend: ___, Backend: ___, Database: ___] | [___ phases] | [First to ___ points]
+Ready to proceed with Phase 1 → 01-gameplay.md
+```
