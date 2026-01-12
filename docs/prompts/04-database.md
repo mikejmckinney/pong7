@@ -71,11 +71,11 @@ CREATE TABLE player_stats (
 -- Match history
 CREATE TABLE matches (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  player1_id UUID REFERENCES players(id),
-  player2_id UUID REFERENCES players(id),
+  player1_id UUID REFERENCES players(id) ON DELETE SET NULL,
+  player2_id UUID REFERENCES players(id) ON DELETE SET NULL,
   player1_score INTEGER NOT NULL,
   player2_score INTEGER NOT NULL,
-  winner_id UUID REFERENCES players(id),
+  winner_id UUID REFERENCES players(id) ON DELETE SET NULL,
   game_mode VARCHAR(20) NOT NULL,
   duration_seconds INTEGER,
   longest_rally INTEGER,
