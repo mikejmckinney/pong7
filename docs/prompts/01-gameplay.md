@@ -87,10 +87,30 @@ Disable these browser behaviors during gameplay:
 - Double-tap zoom
 
 ```javascript
-// Example prevention
-canvas.addEventListener('touchmove', (e) => {
+// Prevent pull-to-refresh and scrolling during active gameplay
+// Only enable during gameplay, not on menu screens, to preserve scrolling performance
+let gameplayTouchHandler = null;
+
+function handleGameplayTouchMove(e) {
   e.preventDefault();
-}, { passive: false });
+}
+
+function enableGameplayTouchPrevention(canvas) {
+  if (!gameplayTouchHandler) {
+    canvas.addEventListener('touchmove', handleGameplayTouchMove, { passive: false });
+    gameplayTouchHandler = true;
+  }
+}
+
+function disableGameplayTouchPrevention(canvas) {
+  if (gameplayTouchHandler) {
+    canvas.removeEventListener('touchmove', handleGameplayTouchMove);
+    gameplayTouchHandler = null;
+  }
+}
+
+// Call enableGameplayTouchPrevention(canvas) when game starts
+// Call disableGameplayTouchPrevention(canvas) when returning to menu
 ```
 
 ---
@@ -154,12 +174,30 @@ First player to hit the power-up with the ball collects it.
 const SPAWN_INTERVAL = 12000; // 12 seconds average
 const SPAWN_VARIANCE = 3000;  // ±3 seconds
 
+// Keep track of the active timeout so it can be cleared on mode changes / game reset
+let powerUpSpawnTimeoutId = null;
+
 function schedulePowerUp() {
   const delay = SPAWN_INTERVAL + (Math.random() - 0.5) * SPAWN_VARIANCE;
-  setTimeout(() => {
+  powerUpSpawnTimeoutId = setTimeout(() => {
     spawnPowerUp();
     schedulePowerUp();
   }, delay);
+}
+
+// Call when a mode that uses power-ups starts (e.g., Chaos Mode)
+function startPowerUpSpawns() {
+  if (powerUpSpawnTimeoutId === null) {
+    schedulePowerUp();
+  }
+}
+
+// Call when switching modes or resetting the game to stop further spawns
+function stopPowerUpSpawns() {
+  if (powerUpSpawnTimeoutId !== null) {
+    clearTimeout(powerUpSpawnTimeoutId);
+    powerUpSpawnTimeoutId = null;
+  }
 }
 ```
 

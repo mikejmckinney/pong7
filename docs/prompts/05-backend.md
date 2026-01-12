@@ -91,7 +91,12 @@ app.use(express.json());
 // Socket.io with CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: [FRONTEND_URL, 'http://localhost:8080', 'http://127.0.0.1:8080'],
+    origin: [
+      FRONTEND_URL, 
+      'http://localhost:8080', 
+      'http://127.0.0.1:8080',
+      'http://[::1]:8080'  // IPv6 localhost
+    ],
     methods: ['GET', 'POST']
   },
   pingTimeout: 60000,

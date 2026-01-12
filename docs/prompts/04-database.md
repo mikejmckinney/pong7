@@ -308,15 +308,16 @@ The frontend can query leaderboards directly using the anon key:
 
 ```javascript
 // js/leaderboard.js
-import { createClient } from '@supabase/supabase-js';
+// Use global supabase from CDN (window.supabase)
+const { createClient } = supabase;
 
-const supabase = createClient(
+const supabaseClient = createClient(
   CONFIG.SUPABASE_URL,
   CONFIG.SUPABASE_ANON_KEY
 );
 
 async function getLeaderboard() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('leaderboard')
     .select('*')
     .limit(100);
@@ -325,7 +326,7 @@ async function getLeaderboard() {
 }
 
 async function getPlayerStats(username) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('leaderboard')
     .select('*')
     .eq('username', username)

@@ -243,13 +243,17 @@ let audioInitialized = false;
 function initAudio() {
   if (audioInitialized) return;
   
-  sound.resume();
   audioInitialized = true;
+  sound.resume();
+  
+  // Clean up listeners after first successful initialization
+  document.removeEventListener('touchstart', initAudio);
+  document.removeEventListener('click', initAudio);
 }
 
 // Attach to first user interaction
-document.addEventListener('touchstart', initAudio, { once: true });
-document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('touchstart', initAudio);
+document.addEventListener('click', initAudio);
 ```
 
 ### Battery Considerations
@@ -257,11 +261,20 @@ document.addEventListener('click', initAudio, { once: true });
 - Use `visibilitychange` event to detect tab switching
 
 ```javascript
+let musicWasPlaying = false;
+
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    music.stop();
+    // Store state before stopping
+    musicWasPlaying = music.isPlaying();
+    if (musicWasPlaying) {
+      music.stop();
+    }
   } else {
-    music.play();
+    // Only resume if it was playing before
+    if (musicWasPlaying) {
+      music.play();
+    }
   }
 });
 ```

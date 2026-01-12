@@ -259,7 +259,7 @@ Use Google Fonts - retro/pixel style:
 │  [ LOCAL MULTI ]        │
 │  [ ONLINE ]             │
 │                         │
-│        ← BACK           │
+│        [ BACK ]         │
 └─────────────────────────┘
 ```
 
@@ -409,17 +409,22 @@ When battery is low or user enables "reduced effects":
 - Disable CRT scanlines
 
 ```javascript
-// Check for battery status
-if ('getBattery' in navigator) {
-  navigator.getBattery().then(battery => {
-    if (battery.level < 0.2 && !battery.charging) {
-      enableLowPowerMode();
-    }
-  });
-}
+// Enable low power mode based on user / system preferences
 
-// Also respect user preference
-if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+// 1) Optional app-level toggle (e.g. from a settings screen)
+//    elsewhere in your app you might set: localStorage.setItem('reducedEffects', 'true');
+const userRequestedReducedEffects =
+  typeof window !== 'undefined' &&
+  window.localStorage &&
+  window.localStorage.getItem('reducedEffects') === 'true';
+
+// 2) Respect OS-level preference
+const prefersReducedMotion =
+  typeof window !== 'undefined' &&
+  window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (userRequestedReducedEffects || prefersReducedMotion) {
   enableLowPowerMode();
 }
 ```
