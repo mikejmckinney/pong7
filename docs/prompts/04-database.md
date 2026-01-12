@@ -48,11 +48,7 @@ CREATE TABLE players (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   -- Username: 3-20 characters, alphanumeric plus underscore and hyphen only
   -- Matches backend validation to prevent Unicode attacks and display issues
-  username TEXT UNIQUE NOT NULL CHECK (
-    char_length(username) >= 3 AND 
-    char_length(username) <= 20 AND
-    username ~ '^[a-zA-Z0-9_-]+$'
-  ),
+  username VARCHAR(20) UNIQUE NOT NULL CHECK (username ~ '^[a-zA-Z0-9_-]{3,20}$'),
   display_name VARCHAR(50),
   avatar_id INTEGER DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -153,6 +149,20 @@ CREATE POLICY "Service update players" ON players
   FOR UPDATE 
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
+
+-- Explicitly deny deletes to prevent accidental data loss
+-- (RLS already denies by default, but this makes it explicit)
+CREATE POLICY "No deletes players" ON players
+  FOR DELETE
+  USING (false);
+
+CREATE POLICY "No deletes player_stats" ON player_stats
+  FOR DELETE
+  USING (false);
+
+CREATE POLICY "No deletes matches" ON matches
+  FOR DELETE
+  USING (false);
 
 -- ============================================
 -- INDEXES
@@ -287,7 +297,7 @@ function calculateEloChange(winnerRating, loserRating) {
   
   // Rating changes
   // Winner gains K * (actual - expected) = K * (1 - expectedWinner)
-  // Loser loses K * (expected - actual) = K * expectedWinner
+  // Loser rating change = K * (0 - expectedWinner); loss magnitude = K * expectedWinner
   const winnerGain = Math.round(K * (1 - expectedWinner));
   const loserLoss = Math.round(K * expectedWinner);
   

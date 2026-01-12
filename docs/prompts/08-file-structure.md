@@ -170,6 +170,8 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
+  // Take control immediately
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -181,6 +183,9 @@ self.addEventListener('activate', (event) => {
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
     })
   );
 });
@@ -334,7 +339,8 @@ Socket.io client for online play.
 Supabase queries and leaderboard UI.
 
 ```javascript
-// Use global supabase from CDN (window.supabase)
+// Supabase CDN exposes everything on window.supabase namespace
+// Destructure createClient from the namespace
 const { createClient } = supabase;
 
 class Leaderboard {

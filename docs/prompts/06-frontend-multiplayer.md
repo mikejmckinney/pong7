@@ -91,6 +91,13 @@ class MultiplayerClient {
 
         console.log(`Connecting to server (attempt ${attempt}/${maxRetries + 1})...`);
 
+        // Clean up previous socket if it exists
+        if (this.socket) {
+          this.socket.removeAllListeners();
+          this.socket.disconnect();
+          this.socket = null;
+        }
+
         this.socket = io(CONFIG.BACKEND_URL, {
           transports: ['websocket', 'polling'],
           timeout: 10000

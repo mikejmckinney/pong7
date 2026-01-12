@@ -97,9 +97,18 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // Rate limiting for REST API endpoints
-const apiLimiter = rateLimit({
+// Separate limits for read (more permissive) and write operations
+const readApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 300, // Limit each IP to 300 requests per 15 min for reads (20/min)
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const writeApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per 15 min for writes
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false
@@ -119,7 +128,7 @@ const io = new Server(httpServer, {
       FRONTEND_URL, 
       'http://localhost:8080', 
       'http://127.0.0.1:8080',
-      'http://[::1]:8080'  // IPv6 localhost
+      'http://[::1]:8080'  // IPv6 localhost (for https add 'https://[::1]:8080')
     ],
     methods: ['GET', 'POST']
   },
@@ -156,8 +165,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// Get leaderboard (rate limited)
-app.get('/api/leaderboard', apiLimiter, async (req, res) => {
+// Get leaderboard (rate limited - read only)
+app.get('/api/leaderboard', readApiLimiter, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('leaderboard')
@@ -171,8 +180,8 @@ app.get('/api/leaderboard', apiLimiter, async (req, res) => {
   }
 });
 
-// Get player by username (rate limited)
-app.get('/api/player/:username', apiLimiter, async (req, res) => {
+// Get player by username (rate limited - read only)
+app.get('/api/player/:username', readApiLimiter, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('leaderboard')
@@ -194,10 +203,12 @@ app.get('/api/player/:username', apiLimiter, async (req, res) => {
 /**
  * Generate a random 6-character room code.
  * Room codes are always uppercase for consistency.
- * @returns {string} Uppercase alphanumeric room code
+ * Ensures exactly 6 characters by padding if necessary.
+ * @returns {string} Uppercase alphanumeric room code (6 characters)
  */
 function generateRoomCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  const code = Math.random().toString(36).substring(2);
+  return (code + '000000').substring(0, 6).toUpperCase();
 }
 
 function calculateElo(winnerRating, loserRating) {
@@ -299,7 +310,7 @@ io.on('connection', (socket) => {
         return callback({ success: false, error: 'Username is required' });
       }
       
-      // Sanitize and validate username
+      // Sanitize and validate username (character count, not byte length)
       const sanitized = username.trim();
       const length = sanitized.length;
       
@@ -533,13 +544,11 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Prevent arbitrary score jumps: allow at most +1 per player since last update
-    const maxIncrement = 1;
+    // Prevent arbitrary score jumps: in pong, only one player scores per rally
+    // Exactly one score should increase by 1, the other should remain unchanged
     const delta0 = nextScores[0] - prevScores[0];
     const delta1 = nextScores[1] - prevScores[1];
-    const validDelta =
-      delta0 >= 0 && delta1 >= 0 &&
-      delta0 <= maxIncrement && delta1 <= maxIncrement;
+    const validDelta = (delta0 === 1 && delta1 === 0) || (delta0 === 0 && delta1 === 1);
 
     if (!validDelta) {
       console.warn(`Invalid score update from ${socket.id}: ${prevScores} -> ${nextScores}`);
@@ -639,13 +648,16 @@ io.on('connection', (socket) => {
         // Notify opponent of disconnection
         socket.to(socket.roomCode).emit('opponent-disconnected');
         
+        // Capture roomCode in closure to avoid reference issues
+        const roomCode = socket.roomCode;
+        
         // Set a grace period before destroying the room
         setTimeout(() => {
           // Check if room still exists and is still disconnected
-          const currentRoom = gameRooms.get(socket.roomCode);
+          const currentRoom = gameRooms.get(roomCode);
           if (currentRoom) {
-            console.log(`Grace period expired for room ${socket.roomCode}, cleaning up`);
-            gameRooms.delete(socket.roomCode);
+            console.log(`Grace period expired for room ${roomCode}, cleaning up`);
+            gameRooms.delete(roomCode);
           }
         }, RECONNECT_GRACE_PERIOD);
       }
@@ -705,6 +717,8 @@ The current implementation uses username-only registration, which is suitable fo
 
 ### Option 1: Supabase Auth (Recommended for Production)
 
+**Note**: Implementing authentication requires modifying the socket event signature to accept additional parameters. The current registration handler only accepts `{ username }`, but you'll need to change it to accept `{ username, authToken }`.
+
 ```javascript
 // Add to backend dependencies
 "dependencies": {
@@ -712,7 +726,8 @@ The current implementation uses username-only registration, which is suitable fo
   // ... other dependencies
 }
 
-// Backend: Verify authenticated user on registration
+// Backend: Modify registration handler to verify authenticated user
+// Change signature from ({ username }, callback) to ({ username, authToken }, callback)
 socket.on('register', async ({ username, authToken }, callback) => {
   try {
     // Verify Supabase auth token

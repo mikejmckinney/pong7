@@ -239,6 +239,7 @@ localStorage.setItem('pongAudioSettings', JSON.stringify(settings));
 
 ```javascript
 let audioInitialized = false;
+let listenersAttached = false;
 
 function initAudio() {
   if (audioInitialized) return;
@@ -248,16 +249,23 @@ function initAudio() {
     audioInitialized = true;
     
     // Clean up listeners after first successful initialization
-    document.removeEventListener('touchstart', initAudio);
-    document.removeEventListener('click', initAudio);
+    if (listenersAttached) {
+      document.removeEventListener('touchstart', initAudio);
+      document.removeEventListener('click', initAudio);
+      listenersAttached = false;
+    }
   } catch (err) {
     console.error('Audio initialization failed:', err);
+    // Don't mark as initialized on failure - allow retry on next interaction
   }
 }
 
 // Attach to first user interaction
-document.addEventListener('touchstart', initAudio);
-document.addEventListener('click', initAudio);
+if (!listenersAttached) {
+  document.addEventListener('touchstart', initAudio);
+  document.addEventListener('click', initAudio);
+  listenersAttached = true;
+}
 ```
 
 ### Battery Considerations
@@ -270,6 +278,8 @@ let musicWasPlaying = false;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     // Store state before stopping
+    // Note: Assumes music object has isPlaying() method
+    // Implement in your sound management system if not present
     musicWasPlaying = music.isPlaying();
     if (musicWasPlaying) {
       music.stop();

@@ -90,22 +90,29 @@ Disable these browser behaviors during gameplay:
 // Prevent pull-to-refresh and scrolling during active gameplay
 // Only enable during gameplay, not on menu screens, to preserve scrolling performance
 let gameplayTouchHandler = null;
+let currentCanvas = null;
 
 function handleGameplayTouchMove(e) {
   e.preventDefault();
 }
 
 function enableGameplayTouchPrevention(canvas) {
-  if (!gameplayTouchHandler) {
+  if (!gameplayTouchHandler && canvas) {
     canvas.addEventListener('touchmove', handleGameplayTouchMove, { passive: false });
     gameplayTouchHandler = true;
+    currentCanvas = canvas;
   }
 }
 
 function disableGameplayTouchPrevention(canvas) {
   if (gameplayTouchHandler) {
-    canvas.removeEventListener('touchmove', handleGameplayTouchMove);
+    // Use stored canvas reference if provided canvas doesn't match
+    const targetCanvas = canvas || currentCanvas;
+    if (targetCanvas) {
+      targetCanvas.removeEventListener('touchmove', handleGameplayTouchMove);
+    }
     gameplayTouchHandler = null;
+    currentCanvas = null;
   }
 }
 
@@ -176,6 +183,7 @@ const SPAWN_VARIANCE = 3000;  // ±3 seconds
 
 // Keep track of the active timeout so it can be cleared on mode changes / game reset
 let powerUpSpawnTimeoutId = null;
+let powerUpSpawnsActive = false;
 
 function schedulePowerUp() {
   const delay = SPAWN_INTERVAL + (Math.random() - 0.5) * SPAWN_VARIANCE;
@@ -187,16 +195,20 @@ function schedulePowerUp() {
 
 // Call when a mode that uses power-ups starts (e.g., Chaos Mode)
 function startPowerUpSpawns() {
-  if (powerUpSpawnTimeoutId === null) {
+  if (!powerUpSpawnsActive) {
+    powerUpSpawnsActive = true;
     schedulePowerUp();
   }
 }
 
 // Call when switching modes or resetting the game to stop further spawns
 function stopPowerUpSpawns() {
-  if (powerUpSpawnTimeoutId !== null) {
-    clearTimeout(powerUpSpawnTimeoutId);
-    powerUpSpawnTimeoutId = null;
+  if (powerUpSpawnsActive) {
+    powerUpSpawnsActive = false;
+    if (powerUpSpawnTimeoutId !== null && powerUpSpawnTimeoutId !== undefined) {
+      clearTimeout(powerUpSpawnTimeoutId);
+      powerUpSpawnTimeoutId = null;
+    }
   }
 }
 ```
