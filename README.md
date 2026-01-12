@@ -16,7 +16,7 @@ A web-based Pong game optimized for mobile devices with a retro synthwave aesthe
 - 📱 Touch-optimized controls with haptic feedback
 - 🎨 Synthwave/retrowave visual aesthetic with neon colors
 - 🔊 8-bit/chiptune sound effects
-- 🏆 Global leaderboard with ELO ranking system
+- 🏆 Global leaderboard with Elo ranking system
 - 💪 10 unique power-ups (Speed Boost, Paddle Grow, Ball Split, etc.)
 - 📴 PWA support - installable and works offline (single-player)
 

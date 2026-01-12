@@ -21,7 +21,7 @@ This is a **web-based Pong game** repository focused on mobile devices with a re
 ## Repository Structure
 
 ```
-/home/runner/work/pong7/pong7/
+pong7/
 ├── .cursor/              # Cursor AI configuration
 │   └── BUGBOT.md        # Bug reporting guidelines
 ├── .gemini/             # Google Gemini configuration
@@ -83,9 +83,7 @@ cd pong7
 ./test.sh
 ```
 
-Expected output: Currently fails with 2 missing files (now being fixed):
-- ✗ AI_REPO_GUIDE.md is missing (this file)
-- ✗ README.md is missing
+Expected output: All checks should pass (21 passed, 0 warnings, 0 failed).
 
 ### Build
 **Not applicable** - No build step required for vanilla JavaScript project.
