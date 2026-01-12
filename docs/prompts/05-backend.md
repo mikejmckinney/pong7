@@ -13,6 +13,19 @@ Node.js server handling:
 - REST API for leaderboards
 - Latency compensation and connection quality monitoring
 
+### Security Considerations
+- **Rate Limiting**: REST API endpoints implement rate limiting to prevent abuse (100 requests per 15 minutes per IP).
+- **Input Validation**: All user inputs are validated (see registration handler for example).
+- **Server-Side Authority**: Game scores and match results are validated server-side to prevent cheating.
+- **RLS Policies**: Database write operations require service role, preventing direct client manipulation.
+- **Authentication**: 
+  - **Current Implementation**: Username-based registration without passwords (suitable for casual play).
+  - **Security Trade-off**: This allows username impersonation. For production use with competitive rankings, consider implementing one of these authentication methods:
+    1. **Supabase Auth**: Add email/password or OAuth (Google, GitHub) authentication via Supabase Auth.
+    2. **Session Tokens**: Generate and validate secure tokens on registration, store in localStorage, validate on each connection.
+    3. **Device Fingerprinting**: Use a combination of device ID + username for casual authentication.
+  - **Recommendation**: For a hobby/casual game, current implementation is acceptable. For competitive play with real rankings, implement Supabase Auth before launch.
+
 ---
 
 ## Dependencies
@@ -30,6 +43,7 @@ Node.js server handling:
     "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
     "socket.io": "^4.7.2"
   },
   "devDependencies": {
@@ -64,6 +78,7 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 
 // ============================================
@@ -81,6 +96,24 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 // Initialize Supabase (with service key for write access)
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+// Rate limiting for REST API endpoints
+// Separate limits for read (more permissive) and write operations
+const readApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // Limit each IP to 300 requests per 15 min for reads (20/min)
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const writeApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per 15 min for writes
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // CORS for REST endpoints
 app.use(cors({
   origin: [FRONTEND_URL, 'http://localhost:8080', 'http://127.0.0.1:8080'],
@@ -91,7 +124,12 @@ app.use(express.json());
 // Socket.io with CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: [FRONTEND_URL, 'http://localhost:8080', 'http://127.0.0.1:8080'],
+    origin: [
+      FRONTEND_URL, 
+      'http://localhost:8080', 
+      'http://127.0.0.1:8080',
+      'http://[::1]:8080'  // IPv6 localhost (for https add 'https://[::1]:8080')
+    ],
     methods: ['GET', 'POST']
   },
   pingTimeout: 60000,
@@ -107,6 +145,13 @@ const matchmakingQueue = [];      // waiting players
 const playerSockets = new Map();  // socketId -> player data
 
 // ============================================
+// GAME CONSTANTS
+// ============================================
+
+const MAX_RALLY_COUNT = 10000;    // Maximum reasonable rally count (prevents abuse)
+const RECONNECT_GRACE_PERIOD = 30000; // 30 seconds grace period for disconnections
+
+// ============================================
 // REST API ENDPOINTS
 // ============================================
 
@@ -120,8 +165,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// Get leaderboard
-app.get('/api/leaderboard', async (req, res) => {
+// Get leaderboard (rate limited - read only)
+app.get('/api/leaderboard', readApiLimiter, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('leaderboard')
@@ -135,8 +180,8 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-// Get player by username
-app.get('/api/player/:username', async (req, res) => {
+// Get player by username (rate limited - read only)
+app.get('/api/player/:username', readApiLimiter, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('leaderboard')
@@ -155,8 +200,15 @@ app.get('/api/player/:username', async (req, res) => {
 // HELPER FUNCTIONS
 // ============================================
 
+/**
+ * Generate a random 6-character room code.
+ * Room codes are always uppercase for consistency.
+ * Ensures exactly 6 characters by padding if necessary.
+ * @returns {string} Uppercase alphanumeric room code (6 characters)
+ */
 function generateRoomCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  const code = Math.random().toString(36).substring(2);
+  return code.padEnd(6, '0').substring(0, 6).toUpperCase();
 }
 
 function calculateElo(winnerRating, loserRating) {
@@ -253,18 +305,37 @@ io.on('connection', (socket) => {
   // ------------------------------
   socket.on('register', async ({ username }, callback) => {
     try {
+      // Input validation
+      if (!username || typeof username !== 'string') {
+        return callback({ success: false, error: 'Username is required' });
+      }
+      
+      // Sanitize and validate username (character count, not byte length)
+      const sanitized = username.trim();
+      const length = sanitized.length;
+      
+      if (length < 3 || length > 20) {
+        return callback({ success: false, error: 'Username must be 3-20 characters' });
+      }
+      
+      // Allow alphanumeric, underscores, and hyphens only
+      // Prevents Unicode-based attacks, confusables, and display issues
+      if (!/^[a-zA-Z0-9_-]+$/.test(sanitized)) {
+        return callback({ success: false, error: 'Username can only contain letters, numbers, underscores, and hyphens' });
+      }
+      
       // Check if player exists
       let { data: player } = await supabase
         .from('players')
         .select('*')
-        .eq('username', username)
+        .eq('username', sanitized)
         .single();
 
       if (!player) {
         // Create new player
         const { data: newPlayer, error } = await supabase
           .from('players')
-          .insert({ username, display_name: username })
+          .insert({ username: sanitized, display_name: sanitized })
           .select()
           .single();
 
@@ -453,29 +524,78 @@ io.on('connection', (socket) => {
 
   socket.on('score-update', ({ scores, longestRally }) => {
     const room = gameRooms.get(socket.roomCode);
-    if (room) {
-      room.scores = scores;
-      if (longestRally > room.longestRally) {
-        room.longestRally = longestRally;
-      }
-      socket.to(socket.roomCode).emit('score-sync', { scores });
+    
+    // Only process score updates for active games from the host player
+    if (!room || room.state !== 'playing' || socket.playerIndex !== 0) {
+      return;
     }
+
+    const prevScores = Array.isArray(room.scores) && room.scores.length === 2
+      ? room.scores
+      : [0, 0];
+
+    // Validate score format
+    if (!Array.isArray(scores) || scores.length !== 2) {
+      return;
+    }
+
+    const nextScores = scores.map((s) => Number.isInteger(s) && s >= 0 ? s : NaN);
+    if (Number.isNaN(nextScores[0]) || Number.isNaN(nextScores[1])) {
+      return;
+    }
+
+    // Prevent arbitrary score jumps: in pong, only one player scores per rally
+    // Exactly one score should increase by 1, the other should remain unchanged
+    const delta0 = nextScores[0] - prevScores[0];
+    const delta1 = nextScores[1] - prevScores[1];
+    const validDelta = (delta0 === 1 && delta1 === 0) || (delta0 === 0 && delta1 === 1);
+
+    if (!validDelta) {
+      console.warn(`Invalid score update from ${socket.id}: ${prevScores} -> ${nextScores}`);
+      return;
+    }
+
+    room.scores = nextScores;
+
+    // Validate longest rally (non-decreasing, reasonable value)
+    if (typeof longestRally === 'number') {
+      const clampedRally = Math.max(0, Math.floor(longestRally));
+      if (clampedRally >= room.longestRally && clampedRally <= MAX_RALLY_COUNT) {
+        room.longestRally = clampedRally;
+      }
+    }
+
+    socket.to(socket.roomCode).emit('score-sync', { scores: room.scores });
   });
 
   socket.on('game-over', async ({ scores }) => {
     const room = gameRooms.get(socket.roomCode);
-    if (room && room.state === 'playing') {
-      room.state = 'finished';
-      room.scores = scores;
-
-      await saveMatchResult(room);
-
-      io.to(socket.roomCode).emit('match-complete', {
-        scores,
-        winnerIndex: scores[0] > scores[1] ? 0 : 1,
-        duration: Math.floor((Date.now() - room.startTime) / 1000)
-      });
+    
+    // Prevent race condition: only process if game is still in 'playing' state
+    if (!room || room.state !== 'playing') {
+      return;
     }
+    
+    // Atomically transition to 'finished' state
+    room.state = 'finished';
+
+    // Use server-tracked scores as authoritative, not client-provided
+    const finalScores = Array.isArray(room.scores) && room.scores.length === 2
+      ? room.scores
+      : [0, 0];
+
+    // Optional: log discrepancies for monitoring
+    if (JSON.stringify(scores) !== JSON.stringify(finalScores)) {
+      console.warn(`Score mismatch from ${socket.id}: client=${JSON.stringify(scores)} server=${JSON.stringify(finalScores)}`);
+    }
+
+    await saveMatchResult(room);
+
+    io.to(socket.roomCode).emit('match-complete', {
+      scores: finalScores,
+      winnerIndex: finalScores[0] > finalScores[1] ? 0 : 1,
+      duration: Math.floor((Date.now() - room.startTime) / 1000)
+    });
   });
 
   // ------------------------------
@@ -521,12 +641,26 @@ io.on('connection', (socket) => {
       matchmakingQueue.splice(queueIndex, 1);
     }
 
-    // Notify room and cleanup
+    // Handle room disconnection with grace period
     if (socket.roomCode) {
       const room = gameRooms.get(socket.roomCode);
       if (room) {
+        // Notify opponent of disconnection
         socket.to(socket.roomCode).emit('opponent-disconnected');
-        gameRooms.delete(socket.roomCode);
+        
+        // Capture roomCode in closure to avoid reference issues
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+        
+        // Set a grace period before destroying the room
+        setTimeout(() => {
+          // Check if room still exists and is still disconnected
+          const currentRoom = gameRooms.get(roomCode);
+          if (currentRoom) {
+            console.log(`Grace period expired for room ${roomCode}, cleaning up`);
+            gameRooms.delete(roomCode);
+          }
+        }, RECONNECT_GRACE_PERIOD);
       }
     }
 
@@ -575,6 +709,78 @@ httpServer.listen(PORT, () => {
 | `match-complete` | `{ scores, winnerIndex, duration }` | Game ends |
 | `rematch-requested` | `{ fromPlayer }` | Opponent wants rematch |
 | `opponent-disconnected` | - | Opponent leaves |
+
+---
+
+## Optional: Adding Authentication
+
+The current implementation uses username-only registration, which is suitable for casual play but vulnerable to username impersonation. To add proper authentication:
+
+### Option 1: Supabase Auth (Recommended for Production)
+
+**Note**: Implementing authentication requires modifying the socket event signature to accept additional parameters. The current registration handler only accepts `{ username }`, but you'll need to change it to accept `{ username, authToken }`.
+
+```javascript
+// Add to backend dependencies
+"dependencies": {
+  "@supabase/supabase-js": "^2.39.0",
+  // ... other dependencies
+}
+
+// Backend: Modify registration handler to verify authenticated user
+// Change signature from ({ username }, callback) to ({ username, authToken }, callback)
+socket.on('register', async ({ username, authToken }, callback) => {
+  try {
+    // Verify Supabase auth token
+    const { data: { user }, error } = await supabase.auth.getUser(authToken);
+    
+    if (error || !user) {
+      return callback({ success: false, error: 'Authentication required' });
+    }
+    
+    // Input validation (as before)
+    if (!username || typeof username !== 'string') {
+      return callback({ success: false, error: 'Username is required' });
+    }
+    
+    // ... rest of registration logic
+    // Link player to user.id from Supabase Auth
+    
+  } catch (err) {
+    callback({ success: false, error: err.message });
+  }
+});
+
+// Frontend: Sign in before connecting
+const { data: { session }, error } = await supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'password'
+});
+
+// Pass auth token to backend
+await multiplayerClient.connect();
+await multiplayerClient.register(username, session.access_token);
+```
+
+### Option 2: Simple Session Tokens
+
+```javascript
+// Backend: Generate token on first registration
+function generateSessionToken() {
+  return require('crypto').randomBytes(32).toString('hex');
+}
+
+socket.on('register', async ({ username, sessionToken }, callback) => {
+  // If sessionToken provided, validate it
+  // If not, create new player and return new token
+  // Store token in database linked to player
+});
+
+// Frontend: Store token in localStorage
+localStorage.setItem('sessionToken', token);
+```
+
+**Note**: Implementing full authentication is beyond the scope of this basic documentation. For competitive play, use Supabase Auth before launch.
 
 ---
 

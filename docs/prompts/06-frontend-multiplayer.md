@@ -11,14 +11,12 @@ Client-side code for connecting to the backend server and handling real-time mul
 Include Socket.io client library:
 
 ```html
-<!-- In index.html -->
+<!-- In index.html (CDN approach - recommended for this vanilla JS project) -->
+<!-- Socket.io client version should match the server version in package.json -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 ```
 
-Or install via npm:
-```bash
-npm install socket.io-client
-```
+**Note**: The project uses vanilla JavaScript with CDN-loaded libraries. While socket.io-client can be installed via npm for build-based projects, this isn't necessary for the GitHub Pages deployment architecture described in this documentation. Keep the CDN version in sync with the backend `socket.io` package version in `package.json`.
 
 ---
 
@@ -67,33 +65,81 @@ class MultiplayerClient {
   // CONNECTION
   // ============================
   
-  connect() {
+  /**
+   * Connect to the multiplayer backend with optional retry logic.
+   *
+   * @param {Object} [options]
+   * @param {number} [options.maxRetries=0]        How many times to retry after the initial failure.
+   * @param {number} [options.initialDelayMs=500]  Initial backoff delay in ms before the first retry.
+   * @param {number} [options.maxDelayMs=8000]     Maximum delay between retries in ms.
+   * @param {number} [options.backoffFactor=2]     Multiplier applied to the delay after each failed attempt.
+   */
+  connect(options = {}) {
+    const {
+      maxRetries = 0,
+      initialDelayMs = 500,
+      maxDelayMs = 8000,
+      backoffFactor = 2
+    } = options;
+
+    let attempt = 0;
+    let currentDelay = initialDelayMs;
+
     return new Promise((resolve, reject) => {
-      this.socket = io(CONFIG.BACKEND_URL, {
-        transports: ['websocket', 'polling'],
-        timeout: 10000
-      });
-      
-      this.socket.on('connect', () => {
-        console.log('Connected to server:', this.socket.id);
-        this.isConnected = true;
-        resolve();
-      });
-      
-      this.socket.on('connect_error', (err) => {
-        console.error('Connection error:', err);
-        this.isConnected = false;
-        if (this.onConnectionError) this.onConnectionError(err);
-        reject(err);
-      });
-      
-      this.socket.on('disconnect', (reason) => {
-        console.log('Disconnected:', reason);
-        this.isConnected = false;
-      });
-      
-      // Set up game event listeners
-      this._setupEventListeners();
+      const attemptConnect = () => {
+        attempt += 1;
+
+        console.log(`Connecting to server (attempt ${attempt}/${maxRetries + 1})...`);
+
+        // Clean up previous socket if it exists
+        if (this.socket) {
+          this.socket.removeAllListeners();
+          this.socket.disconnect();
+          this.socket = null;
+        }
+
+        this.socket = io(CONFIG.BACKEND_URL, {
+          transports: ['websocket', 'polling'],
+          timeout: 10000
+        });
+
+        this.socket.on('connect', () => {
+          console.log('Connected to server:', this.socket.id);
+          this.isConnected = true;
+          // Set up game event listeners once we have a live socket
+          this._setupEventListeners();
+          resolve();
+        });
+
+        this.socket.on('connect_error', (err) => {
+          console.error('Connection error:', err);
+          this.isConnected = false;
+
+          if (attempt <= maxRetries) {
+            // Schedule a retry with exponential backoff
+            const delay = Math.min(currentDelay, maxDelayMs);
+            console.log(`Retrying connection in ${delay} ms...`);
+            currentDelay = currentDelay * backoffFactor;
+
+            setTimeout(() => {
+              attemptConnect();
+            }, delay);
+            return;
+          }
+
+          // No retries left: surface the error
+          if (this.onConnectionError) this.onConnectionError(err);
+          reject(err);
+        });
+
+        this.socket.on('disconnect', (reason) => {
+          console.log('Disconnected:', reason);
+          this.isConnected = false;
+        });
+      };
+
+      // Kick off the first attempt
+      attemptConnect();
     });
   }
   

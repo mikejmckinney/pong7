@@ -47,6 +47,11 @@ Phase 10: Testing, bug fixes, polish                   → See: Final Checklist 
 
 ## Key Requirements Summary
 
+### Gameplay
+- Standard match: First to **11 points** wins
+- Ball speed increases after each rally
+- 4 AI difficulty levels (Easy, Medium, Hard, Impossible)
+
 ### Must Have
 - [ ] 60fps gameplay on mobile devices
 - [ ] Touch controls (drag to move paddle)

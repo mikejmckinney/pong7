@@ -90,7 +90,12 @@ Main HTML file. Includes:
     <div id="ui-overlay"></div>
   </div>
   
+  <!-- External libraries -->
+  <!-- Note: Socket.io CDN version should match backend package.json version -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Game scripts -->
   <script src="js/config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/audio.js"></script>
@@ -164,6 +169,24 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
+  // Take control immediately
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  // Clean up old caches when service worker updates
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
+    })
   );
 });
 
@@ -316,9 +339,13 @@ Socket.io client for online play.
 Supabase queries and leaderboard UI.
 
 ```javascript
+// Supabase CDN exposes everything on window.supabase namespace
+// Destructure createClient from the namespace
+const { createClient } = supabase;
+
 class Leaderboard {
   constructor() {
-    this.supabase = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    this.client = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   }
   
   async getTop100() { /* ... */ }
@@ -367,7 +394,7 @@ const Utils = {
   lerp(a, b, t) { return a + (b - a) * t; },
   clamp(value, min, max) { return Math.max(min, Math.min(max, value)); },
   randomRange(min, max) { return Math.random() * (max - min) + min; },
-  generateUsername() { return 'Player' + Math.random().toString(36).substr(2, 6); }
+  generateUsername() { return 'Player' + Math.random().toString(36).slice(2, 8); }
 };
 ```
 

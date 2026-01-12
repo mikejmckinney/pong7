@@ -239,17 +239,33 @@ localStorage.setItem('pongAudioSettings', JSON.stringify(settings));
 
 ```javascript
 let audioInitialized = false;
+let listenersAttached = false;
 
 function initAudio() {
   if (audioInitialized) return;
   
-  sound.resume();
-  audioInitialized = true;
+  try {
+    sound.resume();
+    audioInitialized = true;
+    
+    // Clean up listeners after first successful initialization
+    if (listenersAttached) {
+      document.removeEventListener('touchstart', initAudio);
+      document.removeEventListener('click', initAudio);
+      listenersAttached = false;
+    }
+  } catch (err) {
+    console.error('Audio initialization failed:', err);
+    // Don't mark as initialized on failure - allow retry on next interaction
+  }
 }
 
 // Attach to first user interaction
-document.addEventListener('touchstart', initAudio, { once: true });
-document.addEventListener('click', initAudio, { once: true });
+if (!listenersAttached) {
+  document.addEventListener('touchstart', initAudio);
+  document.addEventListener('click', initAudio);
+  listenersAttached = true;
+}
 ```
 
 ### Battery Considerations
@@ -257,11 +273,22 @@ document.addEventListener('click', initAudio, { once: true });
 - Use `visibilitychange` event to detect tab switching
 
 ```javascript
+let musicWasPlaying = false;
+
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    music.stop();
+    // Store state before stopping
+    // Note: Assumes music object has isPlaying() method
+    // Implement in your sound management system if not present
+    musicWasPlaying = music.isPlaying();
+    if (musicWasPlaying) {
+      music.stop();
+    }
   } else {
-    music.play();
+    // Only resume if it was playing before
+    if (musicWasPlaying) {
+      music.play();
+    }
   }
 });
 ```
