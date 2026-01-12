@@ -253,18 +253,37 @@ io.on('connection', (socket) => {
   // ------------------------------
   socket.on('register', async ({ username }, callback) => {
     try {
+      // Input validation
+      if (!username || typeof username !== 'string') {
+        return callback({ success: false, error: 'Username is required' });
+      }
+      
+      // Sanitize and validate username
+      const sanitized = username.trim();
+      const length = sanitized.length;
+      
+      if (length < 3 || length > 20) {
+        return callback({ success: false, error: 'Username must be 3-20 characters' });
+      }
+      
+      // Allow alphanumeric, underscores, hyphens, and Unicode characters
+      // Prevent control characters and excessive special characters
+      if (!/^[\p{L}\p{N}_-]+$/u.test(sanitized)) {
+        return callback({ success: false, error: 'Username contains invalid characters' });
+      }
+      
       // Check if player exists
       let { data: player } = await supabase
         .from('players')
         .select('*')
-        .eq('username', username)
+        .eq('username', sanitized)
         .single();
 
       if (!player) {
         // Create new player
         const { data: newPlayer, error } = await supabase
           .from('players')
-          .insert({ username, display_name: username })
+          .insert({ username: sanitized, display_name: sanitized })
           .select()
           .single();
 
@@ -453,29 +472,80 @@ io.on('connection', (socket) => {
 
   socket.on('score-update', ({ scores, longestRally }) => {
     const room = gameRooms.get(socket.roomCode);
-    if (room) {
-      room.scores = scores;
-      if (longestRally > room.longestRally) {
-        room.longestRally = longestRally;
-      }
-      socket.to(socket.roomCode).emit('score-sync', { scores });
+    
+    // Only process score updates for active games from the host player
+    if (!room || room.state !== 'playing' || socket.playerIndex !== 0) {
+      return;
     }
+
+    const prevScores = Array.isArray(room.scores) && room.scores.length === 2
+      ? room.scores
+      : [0, 0];
+
+    // Validate score format
+    if (!Array.isArray(scores) || scores.length !== 2) {
+      return;
+    }
+
+    const nextScores = scores.map((s) => Number.isInteger(s) && s >= 0 ? s : NaN);
+    if (Number.isNaN(nextScores[0]) || Number.isNaN(nextScores[1])) {
+      return;
+    }
+
+    // Prevent arbitrary score jumps: allow at most +1 per player since last update
+    const maxIncrement = 1;
+    const delta0 = nextScores[0] - prevScores[0];
+    const delta1 = nextScores[1] - prevScores[1];
+    const validDelta =
+      delta0 >= 0 && delta1 >= 0 &&
+      delta0 <= maxIncrement && delta1 <= maxIncrement;
+
+    if (!validDelta) {
+      console.warn(`Invalid score update from ${socket.id}: ${prevScores} -> ${nextScores}`);
+      return;
+    }
+
+    room.scores = nextScores;
+
+    // Validate longest rally (non-decreasing, reasonable value)
+    if (typeof longestRally === 'number') {
+      const clampedRally = Math.max(0, Math.floor(longestRally));
+      if (clampedRally >= room.longestRally && clampedRally <= 10000) {
+        room.longestRally = clampedRally;
+      }
+    }
+
+    socket.to(socket.roomCode).emit('score-sync', { scores: room.scores });
   });
 
   socket.on('game-over', async ({ scores }) => {
     const room = gameRooms.get(socket.roomCode);
-    if (room && room.state === 'playing') {
-      room.state = 'finished';
-      room.scores = scores;
-
-      await saveMatchResult(room);
-
-      io.to(socket.roomCode).emit('match-complete', {
-        scores,
-        winnerIndex: scores[0] > scores[1] ? 0 : 1,
-        duration: Math.floor((Date.now() - room.startTime) / 1000)
-      });
+    
+    // Prevent race condition: only process if game is still in 'playing' state
+    if (!room || room.state !== 'playing') {
+      return;
     }
+    
+    // Atomically transition to 'finished' state
+    room.state = 'finished';
+
+    // Use server-tracked scores as authoritative, not client-provided
+    const finalScores = Array.isArray(room.scores) && room.scores.length === 2
+      ? room.scores
+      : [0, 0];
+
+    // Optional: log discrepancies for monitoring
+    if (JSON.stringify(scores) !== JSON.stringify(finalScores)) {
+      console.warn(`Score mismatch from ${socket.id}: client=${JSON.stringify(scores)} server=${JSON.stringify(finalScores)}`);
+    }
+
+    await saveMatchResult(room);
+
+    io.to(socket.roomCode).emit('match-complete', {
+      scores: finalScores,
+      winnerIndex: finalScores[0] > finalScores[1] ? 0 : 1,
+      duration: Math.floor((Date.now() - room.startTime) / 1000)
+    });
   });
 
   // ------------------------------
@@ -521,12 +591,24 @@ io.on('connection', (socket) => {
       matchmakingQueue.splice(queueIndex, 1);
     }
 
-    // Notify room and cleanup
+    // Handle room disconnection with grace period
     if (socket.roomCode) {
       const room = gameRooms.get(socket.roomCode);
       if (room) {
+        // Notify opponent of disconnection
         socket.to(socket.roomCode).emit('opponent-disconnected');
-        gameRooms.delete(socket.roomCode);
+        
+        // Set a grace period before destroying the room (30 seconds)
+        const RECONNECT_GRACE_PERIOD = 30000;
+        
+        setTimeout(() => {
+          // Check if room still exists and is still disconnected
+          const currentRoom = gameRooms.get(socket.roomCode);
+          if (currentRoom) {
+            console.log(`Grace period expired for room ${socket.roomCode}, cleaning up`);
+            gameRooms.delete(socket.roomCode);
+          }
+        }, RECONNECT_GRACE_PERIOD);
       }
     }
 

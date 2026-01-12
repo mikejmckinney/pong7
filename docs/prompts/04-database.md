@@ -46,7 +46,9 @@ Run this SQL in Supabase SQL Editor:
 -- Players table
 CREATE TABLE players (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  username VARCHAR(20) UNIQUE NOT NULL,
+  -- Username limited to 20 characters (character count, not bytes)
+  -- Allows Unicode characters including emoji
+  username TEXT UNIQUE NOT NULL CHECK (char_length(username) <= 20 AND char_length(username) >= 3),
   display_name VARCHAR(50),
   avatar_id INTEGER DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -111,6 +113,9 @@ ORDER BY s.elo_rating DESC;
 -- ============================================
 -- ROW LEVEL SECURITY
 -- ============================================
+-- IMPORTANT: These policies prevent direct client writes using the anon key.
+-- Only the backend server with the service_role key can write to these tables.
+-- This prevents leaderboard manipulation and match history corruption.
 
 ALTER TABLE players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_stats ENABLE ROW LEVEL SECURITY;
@@ -121,12 +126,29 @@ CREATE POLICY "Public read access" ON players FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON player_stats FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON matches FOR SELECT USING (true);
 
--- Backend write access (using service key)
-CREATE POLICY "Service insert" ON players FOR INSERT WITH CHECK (true);
-CREATE POLICY "Service insert" ON player_stats FOR INSERT WITH CHECK (true);
-CREATE POLICY "Service insert" ON matches FOR INSERT WITH CHECK (true);
-CREATE POLICY "Service update" ON player_stats FOR UPDATE USING (true);
-CREATE POLICY "Service update" ON players FOR UPDATE USING (true);
+-- Backend write access (restricted to service role only)
+-- This prevents clients with the anon key from directly writing to these tables
+CREATE POLICY "Service insert players" ON players 
+  FOR INSERT 
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Service insert player_stats" ON player_stats 
+  FOR INSERT 
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Service insert matches" ON matches 
+  FOR INSERT 
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Service update player_stats" ON player_stats 
+  FOR UPDATE 
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Service update players" ON players 
+  FOR UPDATE 
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 -- ============================================
 -- INDEXES
@@ -258,11 +280,12 @@ function calculateEloChange(winnerRating, loserRating) {
   
   // Expected score (probability of winning)
   const expectedWinner = 1 / (1 + Math.pow(10, (loserRating - winnerRating) / 400));
-  const expectedLoser = 1 - expectedWinner;
   
   // Rating changes
+  // Winner gains K * (actual - expected) = K * (1 - expectedWinner)
+  // Loser loses K * (expected - actual) = K * expectedWinner
   const winnerGain = Math.round(K * (1 - expectedWinner));
-  const loserLoss = Math.round(K * expectedLoser);
+  const loserLoss = Math.round(K * expectedWinner);
   
   return { winnerGain, loserLoss };
 }
