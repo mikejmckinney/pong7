@@ -14,10 +14,17 @@ Node.js server handling:
 - Latency compensation and connection quality monitoring
 
 ### Security Considerations
-- **Rate Limiting**: REST API endpoints should implement rate limiting to prevent abuse. Consider using `express-rate-limit` package to limit requests per IP (e.g., 100 requests per 15 minutes for leaderboard endpoints).
+- **Rate Limiting**: REST API endpoints implement rate limiting to prevent abuse (100 requests per 15 minutes per IP).
 - **Input Validation**: All user inputs are validated (see registration handler for example).
 - **Server-Side Authority**: Game scores and match results are validated server-side to prevent cheating.
 - **RLS Policies**: Database write operations require service role, preventing direct client manipulation.
+- **Authentication**: 
+  - **Current Implementation**: Username-based registration without passwords (suitable for casual play).
+  - **Security Trade-off**: This allows username impersonation. For production use with competitive rankings, consider implementing one of these authentication methods:
+    1. **Supabase Auth**: Add email/password or OAuth (Google, GitHub) authentication via Supabase Auth.
+    2. **Session Tokens**: Generate and validate secure tokens on registration, store in localStorage, validate on each connection.
+    3. **Device Fingerprinting**: Use a combination of device ID + username for casual authentication.
+  - **Recommendation**: For a hobby/casual game, current implementation is acceptable. For competitive play with real rankings, implement Supabase Auth before launch.
 
 ---
 
@@ -684,6 +691,75 @@ httpServer.listen(PORT, () => {
 | `match-complete` | `{ scores, winnerIndex, duration }` | Game ends |
 | `rematch-requested` | `{ fromPlayer }` | Opponent wants rematch |
 | `opponent-disconnected` | - | Opponent leaves |
+
+---
+
+## Optional: Adding Authentication
+
+The current implementation uses username-only registration, which is suitable for casual play but vulnerable to username impersonation. To add proper authentication:
+
+### Option 1: Supabase Auth (Recommended for Production)
+
+```javascript
+// Add to backend dependencies
+"dependencies": {
+  "@supabase/supabase-js": "^2.39.0",
+  // ... other dependencies
+}
+
+// Backend: Verify authenticated user on registration
+socket.on('register', async ({ username, authToken }, callback) => {
+  try {
+    // Verify Supabase auth token
+    const { data: { user }, error } = await supabase.auth.getUser(authToken);
+    
+    if (error || !user) {
+      return callback({ success: false, error: 'Authentication required' });
+    }
+    
+    // Input validation (as before)
+    if (!username || typeof username !== 'string') {
+      return callback({ success: false, error: 'Username is required' });
+    }
+    
+    // ... rest of registration logic
+    // Link player to user.id from Supabase Auth
+    
+  } catch (err) {
+    callback({ success: false, error: err.message });
+  }
+});
+
+// Frontend: Sign in before connecting
+const { data: { session }, error } = await supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'password'
+});
+
+// Pass auth token to backend
+await multiplayerClient.connect();
+await multiplayerClient.register(username, session.access_token);
+```
+
+### Option 2: Simple Session Tokens
+
+```javascript
+// Backend: Generate token on first registration
+function generateSessionToken() {
+  return require('crypto').randomBytes(32).toString('hex');
+}
+
+socket.on('register', async ({ username, sessionToken }, callback) => {
+  // If sessionToken provided, validate it
+  // If not, create new player and return new token
+  // Store token in database linked to player
+});
+
+// Frontend: Store token in localStorage
+localStorage.setItem('sessionToken', token);
+```
+
+**Note**: Implementing full authentication is beyond the scope of this basic documentation. For competitive play, use Supabase Auth before launch.
 
 ---
 
