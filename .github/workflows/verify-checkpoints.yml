@@ -1,0 +1,100 @@
+# GitHub Action: Verify Agent Checkpoint Responses
+# 
+# This workflow checks if the AI agent's verification responses are correct.
+# It looks for a CHECKPOINTS.md file that the agent should create with their answers.
+
+name: Verify Agent Checkpoints
+
+on:
+  pull_request:
+    paths:
+      - 'CHECKPOINTS.md'
+      - 'docs/CHECKPOINTS.md'
+      - 'docs/prompts/CHECKPOINTS.md'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for checkpoint file
+        id: check_file
+        run: |
+          if [ -f "CHECKPOINTS.md" ]; then
+            echo "file=CHECKPOINTS.md" >> $GITHUB_OUTPUT
+          elif [ -f "docs/CHECKPOINTS.md" ]; then
+            echo "file=docs/CHECKPOINTS.md" >> $GITHUB_OUTPUT
+          elif [ -f "docs/prompts/CHECKPOINTS.md" ]; then
+            echo "file=docs/prompts/CHECKPOINTS.md" >> $GITHUB_OUTPUT
+          else
+            echo "::error::No CHECKPOINTS.md file found. Agent must create verification responses."
+            exit 1
+          fi
+      
+      - name: Verify README answers
+        run: |
+          FILE="${{ steps.check_file.outputs.file }}"
+          
+          # Check for key answers (case-insensitive grep)
+          echo "Checking README.md verification..."
+          
+          if grep -qi "github pages" "$FILE" && grep -qi "railway" "$FILE" && grep -qi "supabase" "$FILE"; then
+            echo "✅ README deployment targets: PASS"
+          else
+            echo "::warning::README deployment targets may be incorrect"
+          fi
+          
+          if grep -qi "10 phases\|ten phases" "$FILE"; then
+            echo "✅ README phase count: PASS"
+          else
+            echo "::warning::README phase count may be incorrect"
+          fi
+          
+          if grep -qi "11 points\|first to 11" "$FILE"; then
+            echo "✅ README win score: PASS"
+          else
+            echo "::warning::README win score may be incorrect"
+          fi
+      
+      - name: Verify gameplay answers
+        run: |
+          FILE="${{ steps.check_file.outputs.file }}"
+          echo "Checking 01-gameplay.md verification..."
+          
+          if grep -qi "easy.*medium.*hard.*impossible\|4 difficulties\|four difficulties" "$FILE"; then
+            echo "✅ Gameplay difficulties: PASS"
+          else
+            echo "::warning::Gameplay difficulties may be incorrect"
+          fi
+          
+          if grep -qi "10 power-?ups\|ten power-?ups" "$FILE"; then
+            echo "✅ Gameplay power-up count: PASS"
+          else
+            echo "::warning::Gameplay power-up count may be incorrect"
+          fi
+      
+      - name: Verify backend answers
+        run: |
+          FILE="${{ steps.check_file.outputs.file }}"
+          echo "Checking 05-backend.md verification..."
+          
+          if grep -qi "express" "$FILE" && grep -qi "socket.io" "$FILE" && grep -qi "supabase" "$FILE"; then
+            echo "✅ Backend dependencies: PASS"
+          else
+            echo "::warning::Backend dependencies may be incorrect"
+          fi
+          
+          if grep -qi "6 char\|six char\|uppercase" "$FILE"; then
+            echo "✅ Backend room code format: PASS"
+          else
+            echo "::warning::Backend room code format may be incorrect"
+          fi
+      
+      - name: Summary
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "Checkpoint verification complete."
+          echo "Review warnings above for potential issues."
+          echo "=========================================="
