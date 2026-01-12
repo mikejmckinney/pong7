@@ -46,7 +46,7 @@ pong7/
 │       ├── 06-frontend-multiplayer.md     # Multiplayer client
 │       ├── 07-deployment.md               # Deployment guides
 │       └── 08-file-structure.md           # Project file organization
-├── AGENT.md             # Deprecated agent instructions (see AGENTS.md)
+├── AGENT.md             # Deprecated (required by test.sh); see AGENTS.md
 ├── AGENTS.md            # Agent workflow and guidelines
 ├── install.sh           # Codespace/dotfiles installation script
 └── test.sh              # Repository verification script
