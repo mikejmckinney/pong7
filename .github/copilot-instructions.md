@@ -1,7 +1,7 @@
 ## Required Context
 
 - Always read `/AI_REPO_GUIDE.md` first and follow it
-- If `AI_REPO_GUIDE.md` conflicts with README, prefer the most recently updated source
+- If `AI_REPO_GUIDE.md` conflicts with `README.md`, `AI_REPO_GUIDE.md` is the authoritative source.
 
 ## Project Overview
 
