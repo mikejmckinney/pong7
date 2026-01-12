@@ -297,9 +297,10 @@ function calculateEloChange(winnerRating, loserRating) {
   
   // Rating changes
   // Winner gains K * (actual - expected) = K * (1 - expectedWinner)
-  // Loser rating change = K * (0 - expectedWinner); loss magnitude = K * expectedWinner
+  // Loser loses K * (actual - expected) = K * (0 - expectedLoser) = -K * (1 - expectedWinner)
+  // For zero-sum: winnerGain = loserLoss
   const winnerGain = Math.round(K * (1 - expectedWinner));
-  const loserLoss = Math.round(K * expectedWinner);
+  const loserLoss = Math.round(K * (1 - expectedWinner));
   
   return { winnerGain, loserLoss };
 }

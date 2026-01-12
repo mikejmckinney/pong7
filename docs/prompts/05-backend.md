@@ -214,9 +214,10 @@ function generateRoomCode() {
 function calculateElo(winnerRating, loserRating) {
   const K = 32;
   const expectedWinner = 1 / (1 + Math.pow(10, (loserRating - winnerRating) / 400));
+  // Zero-sum: winner gains same amount loser loses
   return {
     winnerGain: Math.round(K * (1 - expectedWinner)),
-    loserLoss: Math.round(K * expectedWinner)
+    loserLoss: Math.round(K * (1 - expectedWinner))
   };
 }
 
@@ -419,6 +420,7 @@ io.on('connection', (socket) => {
     room.startTime = Date.now();
 
     io.to(roomCode.toUpperCase()).emit('game-start', {
+      roomCode: roomCode.toUpperCase(),
       players: room.players.map((p, i) => ({
         username: p.username,
         displayName: p.display_name,
@@ -474,8 +476,9 @@ io.on('connection', (socket) => {
         opponentSocket.playerIndex = 0;
       }
 
-      // Notify both players
+      // Notify both players (include roomCode so clients can track it)
       io.to(roomCode).emit('game-start', {
+        roomCode,
         players: room.players.map((p, i) => ({
           username: p.username,
           displayName: p.display_name,
@@ -484,7 +487,7 @@ io.on('connection', (socket) => {
         gameMode: room.gameMode
       });
 
-      callback({ success: true, matched: true, playerIndex: 1 });
+      callback({ success: true, matched: true, playerIndex: 1, roomCode });
     } else {
       // Add to queue
       matchmakingQueue.push({
@@ -618,6 +621,7 @@ io.on('connection', (socket) => {
       room.longestRally = 0;
 
       io.to(socket.roomCode).emit('game-start', {
+        roomCode: socket.roomCode,
         players: room.players.map((p, i) => ({
           username: p.username,
           displayName: p.display_name,
@@ -702,7 +706,7 @@ httpServer.listen(PORT, () => {
 
 | Event | Payload | When |
 |-------|---------|------|
-| `game-start` | `{ players, gameMode, isRematch }` | Room full / match found |
+| `game-start` | `{ roomCode, players, gameMode, isRematch }` | Room full / match found |
 | `opponent-move` | `{ position, playerIndex }` | Opponent moves paddle |
 | `ball-update` | `{ x, y, vx, vy }` | Ball state sync |
 | `score-sync` | `{ scores }` | Score changes |

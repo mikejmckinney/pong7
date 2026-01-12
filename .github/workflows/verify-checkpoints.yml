@@ -10,6 +10,7 @@ on:
     paths:
       - 'CHECKPOINTS.md'
       - 'docs/CHECKPOINTS.md'
+      - 'docs/prompts/CHECKPOINTS.md'
 
 jobs:
   verify:
@@ -24,6 +25,8 @@ jobs:
             echo "file=CHECKPOINTS.md" >> $GITHUB_OUTPUT
           elif [ -f "docs/CHECKPOINTS.md" ]; then
             echo "file=docs/CHECKPOINTS.md" >> $GITHUB_OUTPUT
+          elif [ -f "docs/prompts/CHECKPOINTS.md" ]; then
+            echo "file=docs/prompts/CHECKPOINTS.md" >> $GITHUB_OUTPUT
           else
             echo "::error::No CHECKPOINTS.md file found. Agent must create verification responses."
             exit 1
@@ -65,7 +68,7 @@ jobs:
             echo "::warning::Gameplay difficulties may be incorrect"
           fi
           
-          if grep -qi "8 power-?ups\|eight power-?ups" "$FILE"; then
+          if grep -qi "10 power-?ups\|ten power-?ups" "$FILE"; then
             echo "✅ Gameplay power-up count: PASS"
           else
             echo "::warning::Gameplay power-up count may be incorrect"

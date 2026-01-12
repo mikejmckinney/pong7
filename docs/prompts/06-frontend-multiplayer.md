@@ -157,6 +157,10 @@ class MultiplayerClient {
     // Game start
     this.socket.on('game-start', (data) => {
       console.log('Game starting:', data);
+      // Set roomCode from server (needed for matchmaking flow)
+      if (data.roomCode) {
+        this.roomCode = data.roomCode;
+      }
       if (this.onGameStart) this.onGameStart(data);
     });
     
@@ -252,6 +256,7 @@ class MultiplayerClient {
         if (response.success) {
           if (response.matched) {
             this.playerIndex = response.playerIndex;
+            this.roomCode = response.roomCode;  // Set roomCode for game sync
           }
           resolve(response);
         } else {
