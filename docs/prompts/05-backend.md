@@ -208,7 +208,7 @@ app.get('/api/player/:username', readApiLimiter, async (req, res) => {
  */
 function generateRoomCode() {
   const code = Math.random().toString(36).substring(2);
-  return (code + '000000').substring(0, 6).toUpperCase();
+  return code.padEnd(6, '0').substring(0, 6).toUpperCase();
 }
 
 function calculateElo(winnerRating, loserRating) {
@@ -650,6 +650,7 @@ io.on('connection', (socket) => {
         
         // Capture roomCode in closure to avoid reference issues
         const roomCode = socket.roomCode;
+        if (!roomCode) return;
         
         // Set a grace period before destroying the room
         setTimeout(() => {

@@ -205,7 +205,7 @@ function startPowerUpSpawns() {
 function stopPowerUpSpawns() {
   if (powerUpSpawnsActive) {
     powerUpSpawnsActive = false;
-    if (powerUpSpawnTimeoutId !== null && powerUpSpawnTimeoutId !== undefined) {
+    if (powerUpSpawnTimeoutId != null) {
       clearTimeout(powerUpSpawnTimeoutId);
       powerUpSpawnTimeoutId = null;
     }
