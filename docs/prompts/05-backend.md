@@ -13,6 +13,12 @@ Node.js server handling:
 - REST API for leaderboards
 - Latency compensation and connection quality monitoring
 
+### Security Considerations
+- **Rate Limiting**: REST API endpoints should implement rate limiting to prevent abuse. Consider using `express-rate-limit` package to limit requests per IP (e.g., 100 requests per 15 minutes for leaderboard endpoints).
+- **Input Validation**: All user inputs are validated (see registration handler for example).
+- **Server-Side Authority**: Game scores and match results are validated server-side to prevent cheating.
+- **RLS Policies**: Database write operations require service role, preventing direct client manipulation.
+
 ---
 
 ## Dependencies
@@ -30,6 +36,7 @@ Node.js server handling:
     "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
     "socket.io": "^4.7.2"
   },
   "devDependencies": {
@@ -64,6 +71,7 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 
 // ============================================
@@ -80,6 +88,15 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 // Initialize Supabase (with service key for write access)
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+// Rate limiting for REST API endpoints
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // CORS for REST endpoints
 app.use(cors({
@@ -125,8 +142,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// Get leaderboard
-app.get('/api/leaderboard', async (req, res) => {
+// Get leaderboard (rate limited)
+app.get('/api/leaderboard', apiLimiter, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('leaderboard')
@@ -140,8 +157,8 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-// Get player by username
-app.get('/api/player/:username', async (req, res) => {
+// Get player by username (rate limited)
+app.get('/api/player/:username', apiLimiter, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('leaderboard')
@@ -160,6 +177,11 @@ app.get('/api/player/:username', async (req, res) => {
 // HELPER FUNCTIONS
 // ============================================
 
+/**
+ * Generate a random 6-character room code.
+ * Room codes are always uppercase for consistency.
+ * @returns {string} Uppercase alphanumeric room code
+ */
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }

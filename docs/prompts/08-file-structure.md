@@ -91,6 +91,7 @@ Main HTML file. Includes:
   </div>
   
   <!-- External libraries -->
+  <!-- Note: Socket.io CDN version should match backend package.json version -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   

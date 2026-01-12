@@ -264,8 +264,9 @@ socket.on('connect', () => console.log('Connected!'));
 ### CORS Errors
 
 Make sure:
-- Frontend URL in Railway env vars has no trailing slash
+- Frontend URL in Railway env vars should NOT have a trailing slash (e.g., `https://username.github.io/pong` not `https://username.github.io/pong/`)
 - URL matches exactly (https vs http, www vs no-www)
+- **Note**: GitHub Pages root URLs naturally have a trailing slash when accessed (e.g., navigating to `https://username.github.io/pong/` in browser), but the CORS origin should be specified without it in the backend configuration.
 
 ### Railway Deployment Failing
 
@@ -280,10 +281,12 @@ Make sure:
 | Service | Free Tier | Paid (if exceeded) |
 |---------|-----------|-------------------|
 | **GitHub Pages** | Unlimited static hosting | N/A |
-| **Railway** | $5/month credit (~500 hrs) | $0.01/hr |
+| **Railway** | $5/month credit (varies by usage) | $0.01/hr + resources |
 | **Supabase** | 500MB, unlimited API | $25/month |
 
-**Total for hobby project: $0/month** (within free tiers)
+**Note**: Railway pricing and free tier limits may change. Verify current pricing at [railway.app/pricing](https://railway.app/pricing). The $5/month credit typically covers hobby projects with moderate usage (~500 hours of uptime), but actual usage depends on compute resources and traffic.
+
+**Total for hobby project**: $0/month (within free tiers for typical usage)
 
 ---
 

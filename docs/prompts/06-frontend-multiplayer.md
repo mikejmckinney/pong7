@@ -12,10 +12,11 @@ Include Socket.io client library:
 
 ```html
 <!-- In index.html (CDN approach - recommended for this vanilla JS project) -->
+<!-- Socket.io client version should match the server version in package.json -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 ```
 
-**Note**: The project uses vanilla JavaScript with CDN-loaded libraries. While socket.io-client can be installed via npm for build-based projects, this isn't necessary for the GitHub Pages deployment architecture described in this documentation.
+**Note**: The project uses vanilla JavaScript with CDN-loaded libraries. While socket.io-client can be installed via npm for build-based projects, this isn't necessary for the GitHub Pages deployment architecture described in this documentation. Keep the CDN version in sync with the backend `socket.io` package version in `package.json`.
 
 ---
 
