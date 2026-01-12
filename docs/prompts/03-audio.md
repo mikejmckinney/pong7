@@ -243,12 +243,16 @@ let audioInitialized = false;
 function initAudio() {
   if (audioInitialized) return;
   
-  audioInitialized = true;
-  sound.resume();
-  
-  // Clean up listeners after first successful initialization
-  document.removeEventListener('touchstart', initAudio);
-  document.removeEventListener('click', initAudio);
+  try {
+    sound.resume();
+    audioInitialized = true;
+    
+    // Clean up listeners after first successful initialization
+    document.removeEventListener('touchstart', initAudio);
+    document.removeEventListener('click', initAudio);
+  } catch (err) {
+    console.error('Audio initialization failed:', err);
+  }
 }
 
 // Attach to first user interaction

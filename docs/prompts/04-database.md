@@ -46,9 +46,13 @@ Run this SQL in Supabase SQL Editor:
 -- Players table
 CREATE TABLE players (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  -- Username limited to 20 characters (character count, not bytes)
-  -- Allows Unicode characters including emoji
-  username TEXT UNIQUE NOT NULL CHECK (char_length(username) <= 20 AND char_length(username) >= 3),
+  -- Username: 3-20 characters, alphanumeric plus underscore and hyphen only
+  -- Matches backend validation to prevent Unicode attacks and display issues
+  username TEXT UNIQUE NOT NULL CHECK (
+    char_length(username) >= 3 AND 
+    char_length(username) <= 20 AND
+    username ~ '^[a-zA-Z0-9_-]+$'
+  ),
   display_name VARCHAR(50),
   avatar_id INTEGER DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

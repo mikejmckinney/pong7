@@ -136,6 +136,13 @@ const matchmakingQueue = [];      // waiting players
 const playerSockets = new Map();  // socketId -> player data
 
 // ============================================
+// GAME CONSTANTS
+// ============================================
+
+const MAX_RALLY_COUNT = 10000;    // Maximum reasonable rally count (prevents abuse)
+const RECONNECT_GRACE_PERIOD = 30000; // 30 seconds grace period for disconnections
+
+// ============================================
 // REST API ENDPOINTS
 // ============================================
 
@@ -300,10 +307,10 @@ io.on('connection', (socket) => {
         return callback({ success: false, error: 'Username must be 3-20 characters' });
       }
       
-      // Allow alphanumeric, underscores, hyphens, and Unicode characters
-      // Prevent control characters and excessive special characters
-      if (!/^[\p{L}\p{N}_-]+$/u.test(sanitized)) {
-        return callback({ success: false, error: 'Username contains invalid characters' });
+      // Allow alphanumeric, underscores, and hyphens only
+      // Prevents Unicode-based attacks, confusables, and display issues
+      if (!/^[a-zA-Z0-9_-]+$/.test(sanitized)) {
+        return callback({ success: false, error: 'Username can only contain letters, numbers, underscores, and hyphens' });
       }
       
       // Check if player exists
@@ -544,7 +551,7 @@ io.on('connection', (socket) => {
     // Validate longest rally (non-decreasing, reasonable value)
     if (typeof longestRally === 'number') {
       const clampedRally = Math.max(0, Math.floor(longestRally));
-      if (clampedRally >= room.longestRally && clampedRally <= 10000) {
+      if (clampedRally >= room.longestRally && clampedRally <= MAX_RALLY_COUNT) {
         room.longestRally = clampedRally;
       }
     }
@@ -632,9 +639,7 @@ io.on('connection', (socket) => {
         // Notify opponent of disconnection
         socket.to(socket.roomCode).emit('opponent-disconnected');
         
-        // Set a grace period before destroying the room (30 seconds)
-        const RECONNECT_GRACE_PERIOD = 30000;
-        
+        // Set a grace period before destroying the room
         setTimeout(() => {
           // Check if room still exists and is still disconnected
           const currentRoom = gameRooms.get(socket.roomCode);
