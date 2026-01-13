@@ -58,6 +58,34 @@ const Screens = {
   },
 
   /**
+   * Show variant selection screen (Classic vs Chaos)
+   */
+  showVariantSelect() {
+    this.currentScreen = 'variantSelect';
+    this.overlay.innerHTML = `
+      <div class="screen variant-select">
+        <h2 class="subtitle">GAME TYPE</h2>
+        <div class="menu-buttons">
+          <button class="menu-btn" data-action="variant" data-value="classic" data-testid="variant-classic">
+            ⚔ CLASSIC
+            <span class="variant-desc">Pure Pong • First to 11</span>
+          </button>
+          <button class="menu-btn" data-action="variant" data-value="chaos" data-testid="variant-chaos">
+            💥 CHAOS MODE
+            <span class="variant-desc">Power-ups • First to 7</span>
+          </button>
+          <button class="menu-btn" data-action="variant" data-value="speedrun" data-testid="variant-speedrun">
+            ⚡ SPEED RUN
+            <span class="variant-desc">Fast ball • First to 5</span>
+          </button>
+        </div>
+        <button class="back-btn" data-action="back" data-testid="back-button">← BACK</button>
+      </div>
+    `;
+    this.attachButtonListeners();
+  },
+
+  /**
    * Show difficulty selection screen
    */
   showDifficultySelect() {
