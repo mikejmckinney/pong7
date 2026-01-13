@@ -3,6 +3,10 @@
 # This workflow runs on every push to validate code quality and functionality.
 # It follows the test pyramid: many unit tests, fewer integration tests, minimal E2E tests.
 #
+# Phase Detection:
+# - Planning Phase: Only documentation exists, skips code tests
+# - Implementation Phase: Full test suite runs
+#
 # Self-Healing Protocol:
 # If tests fail, the error logs are captured as artifacts.
 # AI agents should read these logs, fix the issues, and retry until all tests pass.
@@ -20,368 +24,68 @@ env:
 
 jobs:
   # ============================================
-  # LINT - Check code style and syntax
+  # DETECT PROJECT PHASE
   # ============================================
-  lint:
-    name: Lint Code
+  detect-phase:
+    name: Detect Project Phase
     runs-on: ubuntu-latest
+    outputs:
+      has_frontend: ${{ steps.check.outputs.has_frontend }}
+      has_backend: ${{ steps.check.outputs.has_backend }}
+      has_tests: ${{ steps.check.outputs.has_tests }}
+      phase: ${{ steps.check.outputs.phase }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            server/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        continue-on-error: true
-
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: server
-        continue-on-error: true
-
-      - name: Lint frontend
-        id: lint-frontend
-        run: npm run lint 2>&1 | tee lint-frontend.log || true
-        continue-on-error: true
-
-      - name: Lint backend
-        id: lint-backend
-        run: npm run lint 2>&1 | tee lint-backend.log || true
-        working-directory: server
-        continue-on-error: true
-
-      - name: Upload lint logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-logs
-          path: |
-            lint-frontend.log
-            server/lint-backend.log
-          retention-days: 7
-
-  # ============================================
-  # UNIT TESTS - Fast, isolated function tests
-  # ============================================
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            server/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        continue-on-error: true
-
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: server
-        continue-on-error: true
-
-      - name: Run frontend unit tests
-        id: test-frontend
+      - name: Check project state
+        id: check
         run: |
-          npm test -- --coverage --coverageReporters=text --coverageReporters=json-summary 2>&1 | tee test-frontend.log
-        continue-on-error: true
-
-      - name: Run backend unit tests
-        id: test-backend
-        run: |
-          npm test -- --coverage --coverageReporters=text --coverageReporters=json-summary 2>&1 | tee test-backend.log
-        working-directory: server
-        continue-on-error: true
-
-      - name: Upload test logs on failure
-        if: failure() || steps.test-frontend.outcome == 'failure' || steps.test-backend.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-logs
-          path: |
-            test-frontend.log
-            server/test-backend.log
-            coverage/
-            server/coverage/
-          retention-days: 7
-
-      - name: Check test results
-        run: |
-          if [ "${{ steps.test-frontend.outcome }}" = "failure" ] || [ "${{ steps.test-backend.outcome }}" = "failure" ]; then
-            echo "::error::Unit tests failed. Check the test-logs artifact for details."
-            exit 1
-          fi
-
-  # ============================================
-  # INTEGRATION TESTS - Component interaction tests
-  # ============================================
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: [lint, unit-tests]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            server/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        continue-on-error: true
-
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: server
-        continue-on-error: true
-
-      - name: Run frontend integration tests
-        id: integration-frontend
-        run: |
-          npm test -- --testPathPattern="integration" 2>&1 | tee integration-frontend.log
-        continue-on-error: true
-
-      - name: Run backend integration tests
-        id: integration-backend
-        run: |
-          npm test -- --testPathPattern="integration" 2>&1 | tee integration-backend.log
-        working-directory: server
-        continue-on-error: true
-
-      - name: Upload integration test logs on failure
-        if: failure() || steps.integration-frontend.outcome == 'failure' || steps.integration-backend.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-logs
-          path: |
-            integration-frontend.log
-            server/integration-backend.log
-          retention-days: 7
-
-      - name: Check integration test results
-        run: |
-          if [ "${{ steps.integration-frontend.outcome }}" = "failure" ] || [ "${{ steps.integration-backend.outcome }}" = "failure" ]; then
-            echo "::error::Integration tests failed. Check the integration-test-logs artifact for details."
-            exit 1
-          fi
-
-  # ============================================
-  # BUILD - Validate project builds successfully
-  # ============================================
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            server/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        continue-on-error: true
-
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: server
-        continue-on-error: true
-
-      - name: Validate HTML/JS files exist
-        run: |
-          echo "Validating project structure..."
+          echo "Detecting project phase..."
           
-          # Check for essential frontend files (when implemented)
-          if [ -f "index.html" ]; then
-            echo "✓ index.html exists"
+          # Check for frontend implementation
+          if [ -f "package.json" ] && [ -f "index.html" ]; then
+            echo "has_frontend=true" >> $GITHUB_OUTPUT
+            echo "✓ Frontend implementation detected"
           else
-            echo "⚠ index.html not found (expected during implementation)"
+            echo "has_frontend=false" >> $GITHUB_OUTPUT
+            echo "○ No frontend implementation yet"
           fi
           
-          # Check for server entry point
-          if [ -f "server/index.js" ]; then
-            echo "✓ server/index.js exists"
-            # Validate syntax
-            node --check server/index.js && echo "✓ server/index.js syntax valid" || echo "✗ server/index.js has syntax errors"
+          # Check for backend implementation
+          if [ -f "server/package.json" ] && [ -f "server/index.js" ]; then
+            echo "has_backend=true" >> $GITHUB_OUTPUT
+            echo "✓ Backend implementation detected"
           else
-            echo "⚠ server/index.js not found (expected during implementation)"
+            echo "has_backend=false" >> $GITHUB_OUTPUT
+            echo "○ No backend implementation yet"
           fi
           
-          # Validate JavaScript syntax for all JS files
-          if [ -d "js" ]; then
-            echo "Checking JS files..."
-            for file in js/*.js; do
-              if [ -f "$file" ]; then
-                node --check "$file" 2>&1 && echo "✓ $file syntax valid" || echo "✗ $file has syntax errors"
-              fi
-            done
-          fi
-
-      - name: Build frontend (if build script exists)
-        run: |
-          if npm run build --if-present 2>&1 | tee build.log; then
-            echo "Build completed successfully"
+          # Check for test files
+          if [ -d "tests" ] || [ -d "server/tests" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+            echo "✓ Test files detected"
           else
-            echo "No build script or build failed"
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+            echo "○ No test files yet"
           fi
-        continue-on-error: true
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: |
-            dist/
-            build/
-            build.log
-          retention-days: 7
-          if-no-files-found: ignore
-
-  # ============================================
-  # E2E TESTS - End-to-end user journey tests
-  # ============================================
-  e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: [build, integration-tests]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        continue-on-error: true
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-        continue-on-error: true
-
-      - name: Start server for E2E tests
-        run: |
-          if [ -f "index.html" ]; then
-            npx serve -s . -p 8080 &
-            sleep 3
-            echo "Server started on port 8080"
-          else
-            echo "No index.html - skipping E2E tests (expected during planning phase)"
-            exit 0
-          fi
-        continue-on-error: true
-
-      - name: Run E2E tests
-        id: e2e
-        run: |
-          if [ -f "index.html" ] && [ -d "tests/e2e" ]; then
-            npx playwright test 2>&1 | tee e2e-test.log
-          else
-            echo "E2E tests not configured yet - skipping"
-            exit 0
-          fi
-        continue-on-error: true
-
-      - name: Upload E2E test results
-        if: failure() || steps.e2e.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-test-results
-          path: |
-            e2e-test.log
-            playwright-report/
-            test-results/
-          retention-days: 7
-
-      - name: Check E2E test results
-        run: |
-          if [ "${{ steps.e2e.outcome }}" = "failure" ]; then
-            echo "::error::E2E tests failed. Check the e2e-test-results artifact for details."
-            exit 1
-          fi
-
-  # ============================================
-  # SUMMARY - Final status check
-  # ============================================
-  test-summary:
-    name: Test Summary
-    runs-on: ubuntu-latest
-    needs: [lint, unit-tests, integration-tests, build, e2e-tests]
-    if: always()
-    steps:
-      - name: Check all job results
-        run: |
-          echo "============================================"
-          echo "CI Pipeline Summary"
-          echo "============================================"
-          echo ""
-          echo "Lint:              ${{ needs.lint.result }}"
-          echo "Unit Tests:        ${{ needs.unit-tests.result }}"
-          echo "Integration Tests: ${{ needs.integration-tests.result }}"
-          echo "Build:             ${{ needs.build.result }}"
-          echo "E2E Tests:         ${{ needs.e2e-tests.result }}"
-          echo ""
           
-          # Check if any job failed
-          if [[ "${{ needs.lint.result }}" == "failure" ]] || \
-             [[ "${{ needs.unit-tests.result }}" == "failure" ]] || \
-             [[ "${{ needs.integration-tests.result }}" == "failure" ]] || \
-             [[ "${{ needs.build.result }}" == "failure" ]] || \
-             [[ "${{ needs.e2e-tests.result }}" == "failure" ]]; then
-            echo "============================================"
-            echo "❌ CI FAILED - Self-Healing Required"
-            echo "============================================"
+          # Determine overall phase
+          if [ -f "package.json" ] || [ -f "server/package.json" ]; then
+            echo "phase=implementation" >> $GITHUB_OUTPUT
             echo ""
-            echo "AI Agent Instructions:"
-            echo "1. Download the failed job's artifact"
-            echo "2. Read the error logs carefully"
-            echo "3. Fix the underlying issue in the code"
-            echo "4. Commit and push the fix"
-            echo "5. Verify the CI passes"
-            echo ""
-            echo "See: .github/agents/self-healing.agent.md"
-            exit 1
+            echo "📦 Phase: IMPLEMENTATION"
+            echo "   Running full test suite..."
           else
-            echo "============================================"
-            echo "✅ All CI checks passed!"
-            echo "============================================"
+            echo "phase=planning" >> $GITHUB_OUTPUT
+            echo ""
+            echo "📋 Phase: PLANNING"
+            echo "   Skipping code tests (no implementation yet)"
+            echo "   Running documentation/structure checks only"
           fi
 
   # ============================================
-  # VERIFY REPOSITORY STRUCTURE
+  # VERIFY REPOSITORY STRUCTURE (Always runs)
   # ============================================
   verify-structure:
     name: Verify Repository Structure
@@ -407,3 +111,478 @@ jobs:
           name: structure-check-logs
           path: structure-check.log
           retention-days: 7
+
+  # ============================================
+  # LINT - Check code style and syntax
+  # ============================================
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    needs: [detect-phase]
+    if: needs.detect-phase.outputs.phase == 'implementation'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend dependencies
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: npm ci
+
+      - name: Install backend dependencies
+        if: needs.detect-phase.outputs.has_backend == 'true'
+        run: npm ci
+        working-directory: server
+
+      - name: Lint frontend
+        id: lint-frontend
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: npm run lint 2>&1 | tee lint-frontend.log
+        continue-on-error: true
+
+      - name: Lint backend
+        id: lint-backend
+        if: needs.detect-phase.outputs.has_backend == 'true'
+        run: npm run lint 2>&1 | tee lint-backend.log
+        working-directory: server
+        continue-on-error: true
+
+      - name: Upload lint logs on failure
+        if: failure() || steps.lint-frontend.outcome == 'failure' || steps.lint-backend.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-logs
+          path: |
+            lint-frontend.log
+            server/lint-backend.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check lint results
+        run: |
+          FAILED=false
+          if [ "${{ steps.lint-frontend.outcome }}" = "failure" ]; then
+            echo "::error::Frontend lint failed"
+            FAILED=true
+          fi
+          if [ "${{ steps.lint-backend.outcome }}" = "failure" ]; then
+            echo "::error::Backend lint failed"
+            FAILED=true
+          fi
+          if [ "$FAILED" = "true" ]; then
+            exit 1
+          fi
+          echo "✅ Lint passed"
+
+  # ============================================
+  # UNIT TESTS - Fast, isolated function tests
+  # ============================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [detect-phase]
+    if: needs.detect-phase.outputs.phase == 'implementation' && needs.detect-phase.outputs.has_tests == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend dependencies
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: npm ci
+
+      - name: Install backend dependencies
+        if: needs.detect-phase.outputs.has_backend == 'true'
+        run: npm ci
+        working-directory: server
+
+      - name: Run frontend unit tests
+        id: test-frontend
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: |
+          npm test -- --coverage --coverageReporters=text --coverageReporters=json-summary 2>&1 | tee test-frontend.log
+        continue-on-error: true
+
+      - name: Run backend unit tests
+        id: test-backend
+        if: needs.detect-phase.outputs.has_backend == 'true'
+        run: |
+          npm test -- --coverage --coverageReporters=text --coverageReporters=json-summary 2>&1 | tee test-backend.log
+        working-directory: server
+        continue-on-error: true
+
+      - name: Upload test logs on failure
+        if: failure() || steps.test-frontend.outcome == 'failure' || steps.test-backend.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-logs
+          path: |
+            test-frontend.log
+            server/test-backend.log
+            coverage/
+            server/coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check test results
+        run: |
+          FAILED=false
+          if [ "${{ steps.test-frontend.outcome }}" = "failure" ]; then
+            echo "::error::Frontend unit tests failed"
+            FAILED=true
+          fi
+          if [ "${{ steps.test-backend.outcome }}" = "failure" ]; then
+            echo "::error::Backend unit tests failed"
+            FAILED=true
+          fi
+          if [ "$FAILED" = "true" ]; then
+            exit 1
+          fi
+          echo "✅ Unit tests passed"
+
+  # ============================================
+  # INTEGRATION TESTS - Component interaction tests
+  # ============================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [detect-phase, lint, unit-tests]
+    if: |
+      always() &&
+      needs.detect-phase.outputs.phase == 'implementation' &&
+      needs.detect-phase.outputs.has_tests == 'true' &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend dependencies
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: npm ci
+
+      - name: Install backend dependencies
+        if: needs.detect-phase.outputs.has_backend == 'true'
+        run: npm ci
+        working-directory: server
+
+      - name: Run frontend integration tests
+        id: integration-frontend
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: |
+          npm test -- --testPathPattern="integration" 2>&1 | tee integration-frontend.log
+        continue-on-error: true
+
+      - name: Run backend integration tests
+        id: integration-backend
+        if: needs.detect-phase.outputs.has_backend == 'true'
+        run: |
+          npm test -- --testPathPattern="integration" 2>&1 | tee integration-backend.log
+        working-directory: server
+        continue-on-error: true
+
+      - name: Upload integration test logs on failure
+        if: failure() || steps.integration-frontend.outcome == 'failure' || steps.integration-backend.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: |
+            integration-frontend.log
+            server/integration-backend.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check integration test results
+        run: |
+          FAILED=false
+          if [ "${{ steps.integration-frontend.outcome }}" = "failure" ]; then
+            echo "::error::Frontend integration tests failed"
+            FAILED=true
+          fi
+          if [ "${{ steps.integration-backend.outcome }}" = "failure" ]; then
+            echo "::error::Backend integration tests failed"
+            FAILED=true
+          fi
+          if [ "$FAILED" = "true" ]; then
+            exit 1
+          fi
+          echo "✅ Integration tests passed"
+
+  # ============================================
+  # BUILD - Validate project builds successfully
+  # ============================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [detect-phase, lint]
+    if: |
+      always() &&
+      needs.detect-phase.outputs.phase == 'implementation' &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend dependencies
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: npm ci
+
+      - name: Install backend dependencies
+        if: needs.detect-phase.outputs.has_backend == 'true'
+        run: npm ci
+        working-directory: server
+
+      - name: Validate HTML/JS files
+        run: |
+          echo "Validating project structure..."
+          ERRORS=0
+          
+          # Check for essential frontend files
+          if [ -f "index.html" ]; then
+            echo "✓ index.html exists"
+          fi
+          
+          # Check for server entry point and validate syntax
+          if [ -f "server/index.js" ]; then
+            echo "✓ server/index.js exists"
+            if node --check server/index.js 2>&1; then
+              echo "✓ server/index.js syntax valid"
+            else
+              echo "✗ server/index.js has syntax errors"
+              ERRORS=$((ERRORS + 1))
+            fi
+          fi
+          
+          # Validate JavaScript syntax for all JS files
+          if [ -d "js" ]; then
+            echo "Checking JS files..."
+            for file in js/*.js; do
+              if [ -f "$file" ]; then
+                if node --check "$file" 2>&1; then
+                  echo "✓ $file syntax valid"
+                else
+                  echo "✗ $file has syntax errors"
+                  ERRORS=$((ERRORS + 1))
+                fi
+              fi
+            done
+          fi
+          
+          if [ $ERRORS -gt 0 ]; then
+            echo "::error::Found $ERRORS syntax errors"
+            exit 1
+          fi
+
+      - name: Build frontend (if build script exists)
+        if: needs.detect-phase.outputs.has_frontend == 'true'
+        run: npm run build --if-present 2>&1 | tee build.log || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist/
+            build/
+            build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ============================================
+  # E2E TESTS - End-to-end user journey tests
+  # ============================================
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [detect-phase, build, integration-tests]
+    if: |
+      always() &&
+      needs.detect-phase.outputs.phase == 'implementation' &&
+      needs.detect-phase.outputs.has_frontend == 'true' &&
+      needs.detect-phase.outputs.has_tests == 'true' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start server for E2E tests
+        run: |
+          npx serve -s . -p 8080 &
+          sleep 3
+          echo "Server started on port 8080"
+
+      - name: Run E2E tests
+        id: e2e
+        run: |
+          if [ -d "tests/e2e" ]; then
+            npx playwright test 2>&1 | tee e2e-test.log
+          else
+            echo "No E2E test directory found - skipping"
+          fi
+        continue-on-error: true
+
+      - name: Upload E2E test results
+        if: failure() || steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            e2e-test.log
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check E2E test results
+        run: |
+          if [ "${{ steps.e2e.outcome }}" = "failure" ]; then
+            echo "::error::E2E tests failed. Check the e2e-test-results artifact for details."
+            exit 1
+          fi
+          echo "✅ E2E tests passed"
+
+  # ============================================
+  # SUMMARY - Final status check
+  # ============================================
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [detect-phase, verify-structure, lint, unit-tests, integration-tests, build, e2e-tests]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "============================================"
+          echo "CI Pipeline Summary"
+          echo "============================================"
+          echo ""
+          echo "Project Phase: ${{ needs.detect-phase.outputs.phase }}"
+          echo ""
+          echo "Job Results:"
+          echo "  Detect Phase:        ${{ needs.detect-phase.result }}"
+          echo "  Verify Structure:    ${{ needs.verify-structure.result }}"
+          echo "  Lint:                ${{ needs.lint.result }}"
+          echo "  Unit Tests:          ${{ needs.unit-tests.result }}"
+          echo "  Integration Tests:   ${{ needs.integration-tests.result }}"
+          echo "  Build:               ${{ needs.build.result }}"
+          echo "  E2E Tests:           ${{ needs.e2e-tests.result }}"
+          echo ""
+          
+          # In planning phase, only structure verification matters
+          if [ "${{ needs.detect-phase.outputs.phase }}" = "planning" ]; then
+            if [ "${{ needs.verify-structure.result }}" = "success" ]; then
+              echo "============================================"
+              echo "✅ Planning Phase - All checks passed!"
+              echo "============================================"
+              echo ""
+              echo "Documentation and structure verified."
+              echo "Code tests will run once implementation begins."
+              exit 0
+            else
+              echo "============================================"
+              echo "❌ Planning Phase - Structure check failed"
+              echo "============================================"
+              exit 1
+            fi
+          fi
+          
+          # In implementation phase, check all jobs
+          FAILED=false
+          
+          if [ "${{ needs.verify-structure.result }}" = "failure" ]; then
+            echo "::error::Repository structure verification failed"
+            FAILED=true
+          fi
+          
+          if [ "${{ needs.lint.result }}" = "failure" ]; then
+            echo "::error::Lint check failed"
+            FAILED=true
+          fi
+          
+          if [ "${{ needs.unit-tests.result }}" = "failure" ]; then
+            echo "::error::Unit tests failed"
+            FAILED=true
+          fi
+          
+          if [ "${{ needs.integration-tests.result }}" = "failure" ]; then
+            echo "::error::Integration tests failed"
+            FAILED=true
+          fi
+          
+          if [ "${{ needs.build.result }}" = "failure" ]; then
+            echo "::error::Build failed"
+            FAILED=true
+          fi
+          
+          if [ "${{ needs.e2e-tests.result }}" = "failure" ]; then
+            echo "::error::E2E tests failed"
+            FAILED=true
+          fi
+          
+          if [ "$FAILED" = "true" ]; then
+            echo "============================================"
+            echo "❌ CI FAILED - Self-Healing Required"
+            echo "============================================"
+            echo ""
+            echo "AI Agent Instructions:"
+            echo "1. Download the failed job's artifact"
+            echo "2. Read the error logs carefully"
+            echo "3. Fix the underlying issue in the code"
+            echo "4. Commit and push the fix"
+            echo "5. Verify the CI passes"
+            echo ""
+            echo "See: .github/agents/self-healing.agent.md"
+            exit 1
+          fi
+          
+          echo "============================================"
+          echo "✅ All CI checks passed!"
+          echo "============================================"
