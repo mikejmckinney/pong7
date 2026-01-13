@@ -1,0 +1,219 @@
+/**
+ * Responsive styles for Pong game
+ * Media queries for different screen sizes and orientations
+ */
+
+/* Mobile Portrait (320px - 480px) */
+@media screen and (max-width: 480px) {
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .screen {
+    padding: var(--spacing-md);
+    margin: var(--spacing-sm);
+  }
+
+  .menu-btn {
+    font-size: 0.75rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .menu-btn .stars {
+    display: block;
+    margin-left: 0;
+    margin-top: var(--spacing-xs);
+  }
+
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .setting-item input[type="range"] {
+    width: 100%;
+  }
+
+  .final-score {
+    font-size: 1.5rem;
+  }
+
+  .winner-text {
+    font-size: 1rem;
+  }
+
+  .instructions {
+    font-size: 0.5rem;
+  }
+
+  .stat-item {
+    font-size: 0.625rem;
+  }
+}
+
+/* Mobile Landscape (480px - 768px) */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+  .screen {
+    max-width: 80%;
+    padding: var(--spacing-md);
+  }
+
+  .menu-buttons {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .menu-btn {
+    flex: 1 1 45%;
+    min-width: 150px;
+  }
+}
+
+/* Tablet (768px - 1024px) */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  .screen {
+    max-width: 60%;
+    min-width: 400px;
+  }
+
+  .title {
+    font-size: 2.5rem;
+  }
+}
+
+/* Desktop (1024px+) */
+@media screen and (min-width: 1025px) {
+  .screen {
+    max-width: 500px;
+    min-width: 400px;
+  }
+
+  .title {
+    font-size: 3rem;
+  }
+
+  .menu-btn {
+    font-size: 1rem;
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  .menu-btn:hover {
+    transform: scale(1.05);
+  }
+}
+
+/* Landscape Orientation */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .screen {
+    padding: var(--spacing-sm);
+    max-height: 95%;
+  }
+
+  .title {
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .subtitle {
+    font-size: 1rem;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .menu-buttons {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .menu-btn {
+    font-size: 0.625rem;
+    padding: var(--spacing-xs);
+    flex: 1 1 auto;
+  }
+
+  .instructions {
+    columns: 2;
+    column-gap: var(--spacing-md);
+  }
+
+  .settings-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xs);
+  }
+}
+
+/* High DPI Displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  #game-canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Touch Device Specific */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .menu-btn {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .back-btn {
+    min-height: 44px;
+    padding: var(--spacing-sm);
+  }
+
+  .toggle-btn {
+    min-height: 44px;
+    min-width: 80px;
+  }
+
+  /* Remove hover effects on touch devices */
+  .menu-btn:hover {
+    transform: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .menu-btn:active {
+    background: rgba(0, 255, 255, 0.1);
+    box-shadow: 0 0 20px var(--neon-cyan);
+  }
+}
+
+/* Safe Area (Notched Phones) */
+@supports (padding: env(safe-area-inset-top)) {
+  #game-container {
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+}
+
+/* Print Styles (unlikely but good practice) */
+@media print {
+  #game-container {
+    display: none;
+  }
+}
+
+/* Dark Mode (system preference) */
+@media (prefers-color-scheme: dark) {
+  /* Already dark themed, no changes needed */
+}
+
+/* Light Mode Override (if ever needed) */
+@media (prefers-color-scheme: light) {
+  /* Keep dark theme for game aesthetic */
+  :root {
+    color-scheme: dark;
+  }
+}
