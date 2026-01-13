@@ -53,9 +53,9 @@ const POWERUP_TYPES = {
   },
   MULTI_BALL: {
     name: 'multiBall',
-    duration: -1, // Until cleared
+    duration: -1, // Instant effect
     color: '#ff00ff',
-    description: 'Spawns extra balls',
+    description: 'Chaotic ball burst',
     icon: '●●'
   },
   FIREBALL: {

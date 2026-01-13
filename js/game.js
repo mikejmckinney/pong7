@@ -25,6 +25,7 @@ class Game {
     // Scores
     this.scores = [0, 0];
     this.winScore = CONFIG.GAME.WIN_SCORE;
+    this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
 
     // Particles
     this.particles = [];
@@ -250,13 +251,16 @@ class Game {
     this.variant = variant;
     this.resetGame();
 
-    // Set win score based on variant
+    // Set win score and ball speed based on variant
     if (variant === 'chaos') {
       this.winScore = 7;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
     } else if (variant === 'speedrun') {
       this.winScore = 5;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED * 1.5; // 50% faster ball
     } else {
       this.winScore = CONFIG.GAME.WIN_SCORE;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
     }
 
     // Initialize game objects
@@ -312,7 +316,7 @@ class Game {
       radius: CONFIG.GAME.BALL_RADIUS,
       vx: 0,
       vy: 0,
-      speed: CONFIG.GAME.BALL_SPEED
+      speed: this.baseBallSpeed || CONFIG.GAME.BALL_SPEED
     };
 
     this.ballTrail = [];
@@ -720,13 +724,15 @@ class Game {
    * Spawn an extra ball (for multi-ball power-up)
    */
   spawnExtraBall() {
-    // Multi-ball implementation would require tracking multiple balls
-    // For now, just speed up the current ball slightly
+    // Note: True multi-ball would require significant refactoring to track multiple balls.
+    // As a simplified implementation, this power-up makes the ball more chaotic:
+    // - Increases ball speed by 20% (capped at 15)
+    // - Adds random velocity perturbation for unpredictable movement
+    // This simulates the chaos of having multiple balls without the complexity.
     if (this.ball) {
       this.ball.speed = Math.min(this.ball.speed * 1.2, 15);
       const direction = Math.random() < 0.5 ? 1 : -1;
       const angle = Utils.randomRange(-Math.PI / 4, Math.PI / 4);
-      // Add some velocity perturbation
       this.ball.vx += direction * Math.cos(angle) * 2;
       this.ball.vy += Math.sin(angle) * 2;
     }
