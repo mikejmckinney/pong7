@@ -25,6 +25,18 @@ class Controls {
     this.sensitivity = 1.0;
     this.invertControls = false;
 
+    // Store bound handlers for proper removal
+    this._boundHandlers = {
+      touchStart: this.handleTouchStart.bind(this),
+      touchMove: this.handleTouchMove.bind(this),
+      touchEnd: this.handleTouchEnd.bind(this),
+      keyDown: this.handleKeyDown.bind(this),
+      keyUp: this.handleKeyUp.bind(this),
+      mouseMove: this.handleMouseMove.bind(this),
+      mouseEnter: () => { this.mouseActive = true; },
+      mouseLeave: () => { this.mouseActive = false; }
+    };
+
     this.setupTouchListeners();
     this.setupKeyboardListeners();
     this.setupMouseListeners();
@@ -34,31 +46,27 @@ class Controls {
    * Setup touch event listeners
    */
   setupTouchListeners() {
-    this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
-    this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-    this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
-    this.canvas.addEventListener('touchcancel', this.handleTouchEnd.bind(this), { passive: false });
+    this.canvas.addEventListener('touchstart', this._boundHandlers.touchStart, { passive: false });
+    this.canvas.addEventListener('touchmove', this._boundHandlers.touchMove, { passive: false });
+    this.canvas.addEventListener('touchend', this._boundHandlers.touchEnd, { passive: false });
+    this.canvas.addEventListener('touchcancel', this._boundHandlers.touchEnd, { passive: false });
   }
 
   /**
    * Setup keyboard event listeners
    */
   setupKeyboardListeners() {
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
-    document.addEventListener('keyup', this.handleKeyUp.bind(this));
+    document.addEventListener('keydown', this._boundHandlers.keyDown);
+    document.addEventListener('keyup', this._boundHandlers.keyUp);
   }
 
   /**
    * Setup mouse event listeners
    */
   setupMouseListeners() {
-    this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.canvas.addEventListener('mouseenter', () => {
-      this.mouseActive = true;
-    });
-    this.canvas.addEventListener('mouseleave', () => {
-      this.mouseActive = false;
-    });
+    this.canvas.addEventListener('mousemove', this._boundHandlers.mouseMove);
+    this.canvas.addEventListener('mouseenter', this._boundHandlers.mouseEnter);
+    this.canvas.addEventListener('mouseleave', this._boundHandlers.mouseLeave);
   }
 
   /**
@@ -269,13 +277,15 @@ class Controls {
    * Cleanup event listeners
    */
   destroy() {
-    this.canvas.removeEventListener('touchstart', this.handleTouchStart);
-    this.canvas.removeEventListener('touchmove', this.handleTouchMove);
-    this.canvas.removeEventListener('touchend', this.handleTouchEnd);
-    this.canvas.removeEventListener('touchcancel', this.handleTouchEnd);
-    this.canvas.removeEventListener('mousemove', this.handleMouseMove);
-    document.removeEventListener('keydown', this.handleKeyDown);
-    document.removeEventListener('keyup', this.handleKeyUp);
+    this.canvas.removeEventListener('touchstart', this._boundHandlers.touchStart);
+    this.canvas.removeEventListener('touchmove', this._boundHandlers.touchMove);
+    this.canvas.removeEventListener('touchend', this._boundHandlers.touchEnd);
+    this.canvas.removeEventListener('touchcancel', this._boundHandlers.touchEnd);
+    this.canvas.removeEventListener('mousemove', this._boundHandlers.mouseMove);
+    this.canvas.removeEventListener('mouseenter', this._boundHandlers.mouseEnter);
+    this.canvas.removeEventListener('mouseleave', this._boundHandlers.mouseLeave);
+    document.removeEventListener('keydown', this._boundHandlers.keyDown);
+    document.removeEventListener('keyup', this._boundHandlers.keyUp);
   }
 }
 

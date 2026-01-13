@@ -69,8 +69,8 @@ class AI {
    * @returns {number} Calculated target Y position
    */
   calculateTargetY(ball, paddle, canvas) {
-    // If ball is moving away, return to center with some anticipation
-    if (ball.vx < 0) {
+    // If ball is stationary (during score pause) or moving away, return to center
+    if (ball.vx <= 0) {
       return canvas.height / 2;
     }
 

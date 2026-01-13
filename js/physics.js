@@ -193,8 +193,8 @@ const Physics = {
    * @returns {number} Predicted Y position
    */
   predictBallPosition(ball, targetX, canvas) {
-    // If ball moving away from target, return center
-    if ((ball.vx > 0 && targetX < ball.x) || (ball.vx < 0 && targetX > ball.x)) {
+    // If ball is stationary or moving away from target, return center
+    if (ball.vx === 0 || (ball.vx > 0 && targetX < ball.x) || (ball.vx < 0 && targetX > ball.x)) {
       return canvas.height / 2;
     }
 
@@ -204,15 +204,20 @@ const Physics = {
     // Predict Y position
     let predictedY = ball.y + ball.vy * timeToTarget;
 
-    // Account for wall bounces
-    const bounces = Math.floor(Math.abs(predictedY) / canvas.height);
-    if (bounces > 0) {
-      // Simulate bounces
+    // Handle wall bounces using reflection
+    // First, handle negative Y (bounced off top wall)
+    if (predictedY < 0) {
+      predictedY = -predictedY;
+    }
+
+    // Handle bounces when ball travels beyond canvas boundaries
+    if (predictedY > canvas.height) {
+      // Calculate how many half-periods (bounces) the ball has traveled
+      const cycles = Math.floor(predictedY / canvas.height);
       predictedY = predictedY % canvas.height;
-      if (predictedY < 0) {
-        predictedY = -predictedY;
-      }
-      if (bounces % 2 === 1) {
+      
+      // If odd number of cycles, ball is traveling in opposite direction
+      if (cycles % 2 === 1) {
         predictedY = canvas.height - predictedY;
       }
     }
