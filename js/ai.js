@@ -117,3 +117,8 @@ class AI {
     this.currentMistake = 0;
   }
 }
+
+// Export for Node.js/testing environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = AI;
+}
