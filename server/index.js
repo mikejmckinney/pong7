@@ -504,6 +504,9 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Defensive check: room.scores should always be [number, number] since it's
+    // initialized in create-room and join-room handlers. This fallback handles
+    // potential edge cases or corrupted state gracefully.
     const prevScores = Array.isArray(room.scores) && room.scores.length === 2
       ? room.scores
       : [0, 0];

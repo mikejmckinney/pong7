@@ -156,7 +156,9 @@ describe('Validation Module', () => {
 
   describe('validateRally', () => {
     test('rejects non-number', () => {
-      expect(validateRally('10').valid).toBe(false);
+      const result = validateRally('10');
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Rally must be a number');
       expect(validateRally(null).valid).toBe(false);
     });
 
@@ -166,11 +168,15 @@ describe('Validation Module', () => {
     });
 
     test('rejects rally decrease', () => {
-      expect(validateRally(5, 10).valid).toBe(false);
+      const result = validateRally(5, 10);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Rally count cannot decrease');
     });
 
     test('rejects rally above max', () => {
-      expect(validateRally(GAME.MAX_RALLY_COUNT + 1, 0).valid).toBe(false);
+      const result = validateRally(GAME.MAX_RALLY_COUNT + 1, 0);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Rally count exceeds maximum');
     });
 
     test('floors decimal values', () => {

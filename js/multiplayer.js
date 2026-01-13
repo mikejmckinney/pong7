@@ -61,7 +61,7 @@ class MultiplayerClient {
 
         // Check if Socket.io is available
         if (typeof io === 'undefined') {
-          const error = new Error('Socket.io client not loaded');
+          const error = new Error('Socket.io client not loaded. Check that the Socket.io CDN script is included in index.html');
           if (this.onConnectionError) this.onConnectionError(error);
           return reject(error);
         }

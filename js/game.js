@@ -876,6 +876,34 @@ class Game {
   // ONLINE MULTIPLAYER METHODS
   // ==========================================
 
+  // Username validation constants (match server-side validation)
+  static USERNAME_MIN_LENGTH = 3;
+  static USERNAME_MAX_LENGTH = 20;
+  static USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+  /**
+   * Validate username
+   * @param {string} username - Username to validate
+   * @returns {{ valid: boolean, error?: string }}
+   */
+  validateUsername(username) {
+    if (!username || typeof username !== 'string') {
+      return { valid: false, error: 'Username is required' };
+    }
+    
+    const trimmed = username.trim();
+    
+    if (trimmed.length < Game.USERNAME_MIN_LENGTH || trimmed.length > Game.USERNAME_MAX_LENGTH) {
+      return { valid: false, error: `Username must be ${Game.USERNAME_MIN_LENGTH}-${Game.USERNAME_MAX_LENGTH} characters` };
+    }
+    
+    if (!Game.USERNAME_PATTERN.test(trimmed)) {
+      return { valid: false, error: 'Username can only contain letters, numbers, _ and -' };
+    }
+    
+    return { valid: true };
+  }
+
   /**
    * Start online mode - show username input or connect
    */
@@ -883,8 +911,8 @@ class Game {
     this.mode = 'online';
     const username = Storage.getUsername();
     
-    if (username && username.length >= 3) {
-      // Already have username, connect directly
+    if (username && this.validateUsername(username).valid) {
+      // Already have valid username, connect directly
       this.connectToServer();
     } else {
       // Need username first
@@ -899,14 +927,10 @@ class Game {
     const input = document.getElementById('username-input');
     const username = input ? input.value.trim() : '';
     
-    // Validate username
-    if (username.length < 3 || username.length > 20) {
-      Screens.showError('Username must be 3-20 characters', 'back');
-      return;
-    }
-    
-    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-      Screens.showError('Username can only contain letters, numbers, _ and -', 'back');
+    // Validate username using shared validation
+    const validation = this.validateUsername(username);
+    if (!validation.valid) {
+      Screens.showError(validation.error, 'back');
       return;
     }
     

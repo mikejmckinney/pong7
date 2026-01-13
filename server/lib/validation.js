@@ -147,14 +147,18 @@ function validateScores(scores, previousScores = null) {
  */
 function validateRally(rally, previousRally = 0) {
   if (typeof rally !== 'number') {
-    return { valid: false };
+    return { valid: false, error: 'Rally must be a number' };
   }
   
   const clampedRally = Math.max(0, Math.floor(rally));
   
   // Rally should only increase and be within reasonable bounds
-  if (clampedRally < previousRally || clampedRally > GAME.MAX_RALLY_COUNT) {
-    return { valid: false };
+  if (clampedRally < previousRally) {
+    return { valid: false, error: 'Rally count cannot decrease' };
+  }
+  
+  if (clampedRally > GAME.MAX_RALLY_COUNT) {
+    return { valid: false, error: 'Rally count exceeds maximum' };
   }
   
   return { valid: true, rally: clampedRally };
