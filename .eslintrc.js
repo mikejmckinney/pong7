@@ -35,6 +35,10 @@ module.exports = {
     game: 'writable',
     initAudio: 'readonly',
     enableGameplayTouchPrevention: 'readonly',
-    disableGameplayTouchPrevention: 'readonly'
+    disableGameplayTouchPrevention: 'readonly',
+    // Socket.io client (loaded from CDN)
+    io: 'readonly',
+    // Multiplayer client class
+    MultiplayerClient: 'readonly'
   }
 };

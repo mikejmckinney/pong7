@@ -4,8 +4,14 @@
  */
 
 const CONFIG = {
-  // Backend URLs (for future multiplayer implementation)
-  BACKEND_URL: '',
+  // Backend URL - auto-detect based on environment
+  // In production, change this to your Railway URL
+  BACKEND_URL: (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+    ? 'http://localhost:3001'
+    : 'https://pong7-server.up.railway.app',
+  
+  // Supabase configuration (for direct leaderboard queries)
+  // Set these values after setting up your Supabase project
   SUPABASE_URL: '',
   SUPABASE_ANON_KEY: '',
 

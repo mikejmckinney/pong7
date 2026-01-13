@@ -49,7 +49,7 @@ const Screens = {
         <div class="menu-buttons">
           <button class="menu-btn" data-action="single" data-testid="single-player">SINGLE PLAYER</button>
           <button class="menu-btn" data-action="local" data-testid="local-multiplayer">LOCAL MULTI</button>
-          <button class="menu-btn" data-action="online" data-testid="online-multiplayer" disabled>ONLINE</button>
+          <button class="menu-btn" data-action="online" data-testid="online-multiplayer">ONLINE</button>
         </div>
         <button class="back-btn" data-action="back" data-testid="back-button">← BACK</button>
       </div>
@@ -276,6 +276,237 @@ const Screens = {
         <div class="menu-buttons">
           <button class="menu-btn" data-action="rematch">REMATCH</button>
           <button class="menu-btn" data-action="menu">MAIN MENU</button>
+        </div>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show online lobby screen
+   */
+  showOnlineLobby() {
+    this.currentScreen = 'onlineLobby';
+    this.overlay.innerHTML = `
+      <div class="screen online-lobby">
+        <h2 class="subtitle">ONLINE PLAY</h2>
+        <div class="menu-buttons">
+          <button class="menu-btn" data-action="quickMatch" data-testid="quick-match">QUICK MATCH</button>
+          <button class="menu-btn" data-action="createRoom" data-testid="create-room">CREATE ROOM</button>
+          <button class="menu-btn" data-action="joinRoom" data-testid="join-room">JOIN ROOM</button>
+        </div>
+        <button class="back-btn" data-action="onlineBack" data-testid="back-button">← BACK</button>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show username input screen
+   */
+  showUsernameInput() {
+    this.currentScreen = 'usernameInput';
+    const savedUsername = Storage.getUsername();
+    
+    this.overlay.innerHTML = `
+      <div class="screen username-screen">
+        <h2 class="subtitle">ENTER USERNAME</h2>
+        <div class="input-group">
+          <input type="text" id="username-input" class="text-input" 
+                 placeholder="Username" maxlength="20" 
+                 value="${savedUsername}" data-testid="username-input">
+          <p class="input-hint">3-20 characters, letters, numbers, _ and -</p>
+        </div>
+        <div class="menu-buttons">
+          <button class="menu-btn" data-action="submitUsername" data-testid="submit-username">CONTINUE</button>
+        </div>
+        <button class="back-btn" data-action="back" data-testid="back-button">← BACK</button>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show room code input screen
+   */
+  showJoinRoomInput() {
+    this.currentScreen = 'joinRoomInput';
+    this.overlay.innerHTML = `
+      <div class="screen join-room-screen">
+        <h2 class="subtitle">JOIN ROOM</h2>
+        <div class="input-group">
+          <input type="text" id="room-code-input" class="text-input" 
+                 placeholder="ROOM CODE" maxlength="6" 
+                 style="text-transform: uppercase;" data-testid="room-code-input">
+          <p class="input-hint">Enter 6-character room code</p>
+        </div>
+        <div class="menu-buttons">
+          <button class="menu-btn" data-action="submitRoomCode" data-testid="submit-room-code">JOIN</button>
+        </div>
+        <button class="back-btn" data-action="onlineBack" data-testid="back-button">← BACK</button>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Sanitize a string for safe HTML insertion
+   * @param {string} str - String to sanitize
+   * @returns {string} Sanitized string
+   */
+  sanitizeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+
+  /**
+   * Show waiting for opponent screen (room created)
+   * @param {string} roomCode - The room code
+   */
+  showWaitingForOpponent(roomCode) {
+    this.currentScreen = 'waitingRoom';
+    // Sanitize roomCode to prevent XSS (defensive measure even for server-generated codes)
+    const sanitizedRoomCode = this.sanitizeHTML(roomCode);
+    this.overlay.innerHTML = `
+      <div class="screen waiting-screen">
+        <h2 class="subtitle">WAITING FOR OPPONENT</h2>
+        <div class="room-code-display">
+          <p class="room-label">SHARE THIS CODE:</p>
+          <p class="room-code" data-testid="room-code">${sanitizedRoomCode}</p>
+        </div>
+        <div class="loading-indicator">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <button class="back-btn" data-action="cancelWaiting" data-testid="cancel-button">CANCEL</button>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show matchmaking screen
+   * @param {string} [message='Searching for opponent...'] - Status message
+   */
+  showMatchmaking(message = 'Searching for opponent...') {
+    this.currentScreen = 'matchmaking';
+    this.overlay.innerHTML = `
+      <div class="screen matchmaking-screen">
+        <h2 class="subtitle">MATCHMAKING</h2>
+        <p class="status-message">${message}</p>
+        <div class="loading-indicator">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <button class="back-btn" data-action="cancelMatchmaking" data-testid="cancel-button">CANCEL</button>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show connecting screen
+   */
+  showConnecting() {
+    this.currentScreen = 'connecting';
+    this.overlay.innerHTML = `
+      <div class="screen connecting-screen">
+        <h2 class="subtitle">CONNECTING</h2>
+        <div class="loading-indicator">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <p class="status-message">Connecting to server...</p>
+      </div>
+    `;
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show error message screen
+   * @param {string} message - Error message
+   * @param {string} [backAction='back'] - Action for back button
+   */
+  showError(message, backAction = 'back') {
+    this.currentScreen = 'error';
+    this.overlay.innerHTML = `
+      <div class="screen error-screen">
+        <h2 class="subtitle error-title">ERROR</h2>
+        <p class="error-message">${message}</p>
+        <button class="back-btn" data-action="${backAction}" data-testid="back-button">← BACK</button>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show opponent disconnected screen
+   */
+  showOpponentDisconnected() {
+    this.currentScreen = 'disconnected';
+    this.overlay.innerHTML = `
+      <div class="screen disconnected-screen">
+        <h2 class="subtitle">OPPONENT LEFT</h2>
+        <p class="status-message">Your opponent has disconnected.</p>
+        <div class="menu-buttons">
+          <button class="menu-btn" data-action="quickMatch" data-testid="find-new">FIND NEW MATCH</button>
+          <button class="menu-btn" data-action="menu" data-testid="main-menu">MAIN MENU</button>
+        </div>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show online game over screen
+   * @param {number} winnerIndex - Winner (0 or 1)
+   * @param {number[]} scores - Final scores [p1, p2]
+   * @param {number} playerIndex - Local player index
+   */
+  showOnlineGameOver(winnerIndex, scores, playerIndex) {
+    this.currentScreen = 'onlineGameover';
+    const isWinner = winnerIndex === playerIndex;
+    const winnerText = isWinner ? 'YOU WIN!' : 'YOU LOSE!';
+
+    this.overlay.innerHTML = `
+      <div class="screen gameover-screen">
+        <h2 class="winner-text ${isWinner ? 'cyan' : 'pink'}">${winnerText}</h2>
+        <div class="final-score">${scores[0]} - ${scores[1]}</div>
+        <div class="menu-buttons">
+          <button class="menu-btn" data-action="requestRematch" data-testid="rematch">REMATCH</button>
+          <button class="menu-btn" data-action="quickMatch" data-testid="new-match">NEW MATCH</button>
+          <button class="menu-btn" data-action="menu" data-testid="main-menu">MAIN MENU</button>
+        </div>
+      </div>
+    `;
+    this.attachButtonListeners();
+    this.overlay.classList.remove('hidden');
+  },
+
+  /**
+   * Show rematch requested screen
+   */
+  showRematchRequested() {
+    this.currentScreen = 'rematchRequested';
+    this.overlay.innerHTML = `
+      <div class="screen rematch-screen">
+        <h2 class="subtitle">REMATCH?</h2>
+        <p class="status-message">Your opponent wants a rematch!</p>
+        <div class="menu-buttons">
+          <button class="menu-btn cyan" data-action="acceptRematch" data-testid="accept">ACCEPT</button>
+          <button class="menu-btn pink" data-action="declineRematch" data-testid="decline">DECLINE</button>
         </div>
       </div>
     `;

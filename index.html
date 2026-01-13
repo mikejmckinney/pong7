@@ -27,6 +27,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   
+  <!-- Socket.io Client (for multiplayer) -->
+  <!--
+    NOTE: The Socket.io client is intentionally pinned to version 4.7.2.
+    This version must match the server's socket.io dependency (see server/package.json).
+    If updating this version, ensure server/package.json is also updated to match.
+    Client/server version mismatches can cause connection issues.
+  -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  
   <!-- Styles -->
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/animations.css">
@@ -49,6 +58,7 @@
   <script src="js/renderer.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/screens.js"></script>
+  <script src="js/multiplayer.js"></script>
   <script src="js/game.js"></script>
   
   <!-- Service Worker Registration -->

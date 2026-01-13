@@ -67,15 +67,18 @@ The game is fully implemented. Key files:
 - **Controls**: `js/controls.js` - Touch, keyboard, mouse input handling
 - **Power-ups**: `js/powerups.js` - 10 power-up types with effects
 - **Renderer**: `js/renderer.js` - Canvas drawing with synthwave aesthetic
-- **Screens**: `js/screens.js` - Menu and overlay UI
+- **Screens**: `js/screens.js` - Menu and overlay UI (including online lobby)
 - **Audio**: `js/audio.js` - Web Audio API sound effects
 - **Storage**: `js/storage.js` - LocalStorage for settings and stats
+- **Multiplayer**: `js/multiplayer.js` - Socket.io client for online play
+- **Backend**: `server/index.js` - Node.js server for multiplayer
 
 ## Current State
 
 The game is **fully playable** with the following features implemented:
 - ✅ Single-player vs AI (4 difficulty levels)
 - ✅ Local multiplayer (same device)
+- ✅ Online multiplayer (requires backend server running)
 - ✅ Synthwave visuals and sound effects
 - ✅ Power-ups system (10 types) in Chaos Mode
 - ✅ 3 game variants: Classic, Chaos Mode, Speed Run
@@ -84,17 +87,33 @@ The game is **fully playable** with the following features implemented:
 - ✅ PWA support (service worker)
 
 Not yet implemented:
-- Online multiplayer (requires backend)
 - Database/leaderboard (requires Supabase)
+- Production deployment (Railway for backend, GitHub Pages for frontend)
 
 ## Quickstart Commands
 
 ### Setup
 ```bash
-# No dependencies to install yet (no package.json)
 # Clone the repository
 git clone https://github.com/mikejmckinney/pong7
 cd pong7
+
+# Install frontend dependencies
+npm install
+
+# Install server dependencies
+cd server && npm install && cd ..
+```
+
+### Running Locally
+```bash
+# Start the frontend development server
+npm start
+# Frontend runs at http://localhost:8080
+
+# In a new terminal, start the backend server
+cd server && npm run dev
+# Backend runs at http://localhost:3001
 ```
 
 ### Verification
@@ -107,14 +126,14 @@ Expected output: All checks should pass (21 passed, 0 warnings, 0 failed).
 
 ### Build
 **Not applicable** - No build step required for vanilla JavaScript project.
-Once implemented, the frontend will be static files served directly.
+The frontend consists of static files served directly.
 
 ### Test
 ```bash
-# Run unit tests (when implemented)
+# Run frontend unit tests
 npm test
 
-# Run tests with coverage
+# Run frontend tests with coverage
 npm run test:coverage
 
 # Run E2E tests
@@ -132,7 +151,7 @@ npm run lint
 # Auto-fix lint issues
 npm run lint:fix
 
-# Lint backend code
+# Lint backend code (if configured)
 cd server && npm run lint
 ```
 
@@ -261,10 +280,10 @@ The `test.sh` script validates repository structure. Required files:
 4. ✅ Phase 4: Power-ups and special game modes
 5. ✅ Phase 5: Local multiplayer (same device)
 6. ⏳ Phase 6: Database setup (Supabase) - Not started
-7. ⏳ Phase 7: Backend deployment (Railway) - Not started
-8. ⏳ Phase 8: Online multiplayer integration - Not started
+7. ✅ Phase 7: Backend server (Node.js + Socket.io) - Code complete
+8. ✅ Phase 8: Online multiplayer integration - Code complete
 9. ⏳ Phase 9: Frontend deployment (GitHub Pages) - Not started
-10. ✅ Phase 10: Testing, bug fixes, polish (84 tests passing)
+10. ✅ Phase 10: Testing, bug fixes, polish (156 tests passing: 84 frontend + 72 backend)
 
 ## Related Files
 
@@ -282,8 +301,10 @@ The `test.sh` script validates repository structure. Required files:
 2. **Update this file** when adding new commands, changing structure, or modifying conventions
 3. **Follow** `.github/prompts/repo-onboarding.md` for comprehensive onboarding
 4. **Refer to** `docs/prompts/` for detailed game specifications
-5. **Run** `npm test` to ensure all 84 tests pass before considering work complete
-6. **Run** `./test.sh` to verify repository structure
-7. **Ensure CI passes** before marking tasks complete (self-healing protocol)
-8. **Check** `.github/agents/self-healing.agent.md` if CI fails
-9. **Game is playable**: Run `npm start` to test locally on http://localhost:8080
+5. **Run** `npm test` to ensure all 84 frontend tests pass
+6. **Run** `cd server && npm test` to ensure all 72 backend tests pass (27 integration + 45 unit)
+7. **Run** `./test.sh` to verify repository structure
+8. **Ensure CI passes** before marking tasks complete (self-healing protocol)
+9. **Check** `.github/agents/self-healing.agent.md` if CI fails
+10. **Game is playable**: Run `npm start` to test locally on http://localhost:8080
+11. **Online mode requires**: Both frontend (`npm start`) and backend (`cd server && npm run dev`) running

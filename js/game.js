@@ -39,6 +39,11 @@ class Game {
     // Pause tracking
     this.previousState = null;
 
+    // Multiplayer
+    this.multiplayer = null;
+    this.opponentPaddleY = 0;  // For online mode paddle smoothing
+    this.opponentTargetY = 0;
+
     // Initialize systems
     this.controls = new Controls(this.canvas);
     this.ai = new AI(this.difficulty);
@@ -174,7 +179,7 @@ class Game {
         break;
 
       case 'online':
-        // Not implemented yet
+        this.startOnlineMode();
         break;
 
       case 'difficulty':
@@ -236,7 +241,67 @@ class Game {
       case 'quit':
       case 'menu':
         this.resetGame();
+        if (this.multiplayer && this.multiplayer.isConnected) {
+          this.multiplayer.disconnect();
+        }
         this.showMainMenu();
+        break;
+
+      // Online mode actions
+      case 'submitUsername':
+        this.handleUsernameSubmit();
+        break;
+
+      case 'quickMatch':
+        this.startQuickMatch();
+        break;
+
+      case 'createRoom':
+        this.createOnlineRoom();
+        break;
+
+      case 'joinRoom':
+        Screens.showJoinRoomInput();
+        break;
+
+      case 'submitRoomCode':
+        this.handleJoinRoom();
+        break;
+
+      case 'onlineBack':
+        if (this.multiplayer && this.multiplayer.isConnected) {
+          this.multiplayer.disconnect();
+        }
+        Screens.showModeSelect();
+        break;
+
+      case 'cancelWaiting':
+      case 'cancelMatchmaking':
+        if (this.multiplayer) {
+          this.multiplayer.cancelMatchmaking();
+          this.multiplayer.leaveRoom();
+        }
+        Screens.showOnlineLobby();
+        break;
+
+      case 'requestRematch':
+        if (this.multiplayer && this.multiplayer.isConnected) {
+          this.multiplayer.requestRematch();
+          Screens.showMatchmaking('Waiting for opponent...');
+        }
+        break;
+
+      case 'acceptRematch':
+        if (this.multiplayer && this.multiplayer.isConnected) {
+          this.multiplayer.acceptRematch();
+        }
+        break;
+
+      case 'declineRematch':
+        if (this.multiplayer) {
+          this.multiplayer.leaveRoom();
+        }
+        Screens.showOnlineLobby();
         break;
     }
   }
@@ -385,9 +450,22 @@ class Game {
     // Clear point-ending power-up effects (like speedBall)
     this.powerups.clearPointEffects();
 
+    // Send score update in online mode (host only)
+    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isHost) {
+      this.multiplayer.sendScoreUpdate(this.scores, 0);
+    }
+
     // Play sound
     if (this.mode === 'single') {
       if (scorer === 1) {
+        sound.scoreWin();
+      } else {
+        sound.scoreLose();
+      }
+    } else if (this.mode === 'online') {
+      // In online mode, determine if local player scored
+      const localPlayerIndex = this.multiplayer ? this.multiplayer.playerIndex : 0;
+      if ((scorer === 1 && localPlayerIndex === 0) || (scorer === 2 && localPlayerIndex === 1)) {
         sound.scoreWin();
       } else {
         sound.scoreLose();
@@ -456,8 +534,17 @@ class Game {
       Storage.updateStats(winner === 1, this.scores[0], this.scores[1]);
     }
 
-    // Show game over screen
-    Screens.showGameOver(winner, this.scores[0], this.scores[1], this.mode);
+    // Send game over in online mode (either player can report - server validates)
+    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isConnected) {
+      this.multiplayer.sendGameOver(this.scores);
+      // The server will send match-complete event which triggers showOnlineGameOver
+      return;
+    }
+
+    // Show game over screen (for non-online modes)
+    if (this.mode !== 'online') {
+      Screens.showGameOver(winner, this.scores[0], this.scores[1], this.mode);
+    }
 
     // Disable touch prevention
     disableGameplayTouchPrevention(this.canvas);
@@ -556,7 +643,49 @@ class Game {
     const p1Reversed = this.powerups.isReversed(1);
     const p2Reversed = this.powerups.isReversed(2);
 
-    // Player 1 input
+    // Online mode: handle based on player index
+    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isConnected) {
+      // Determine which paddle we control based on playerIndex
+      const myPaddle = this.multiplayer.isHost ? this.paddle1 : this.paddle2;
+      const opponentPaddle = this.multiplayer.isHost ? this.paddle2 : this.paddle1;
+      const myReversed = this.multiplayer.isHost ? p1Reversed : p2Reversed;
+      
+      // Get local player input (use player 1 controls for all online players)
+      const myInput = this.controls.getPlayer1Input(this.mode);
+      let myDirection = myInput.direction;
+      if (myReversed && myDirection !== 0) {
+        myDirection = -myDirection;
+      }
+      
+      // Apply local input to our paddle
+      if (myInput.y !== null) {
+        const targetY = myReversed ? (this.canvas.height - myInput.y) : myInput.y;
+        Physics.updatePaddle(myPaddle, targetY, this.canvas.height, myPaddle.speed);
+      } else if (myDirection !== 0) {
+        const targetY = myPaddle.y + myPaddle.height / 2 + (myDirection * myPaddle.speed);
+        Physics.updatePaddle(myPaddle, targetY, this.canvas.height, myPaddle.speed);
+      }
+      
+      // Send our paddle position to opponent
+      const myPaddleY = myPaddle.y + myPaddle.height / 2;
+      this.multiplayer.sendPaddlePosition(myPaddleY);
+      
+      // Smooth opponent paddle movement using configurable interpolation factor
+      // This provides visual smoothing for network latency variations
+      this.opponentPaddleY += (this.opponentTargetY - this.opponentPaddleY) * Game.PADDLE_SMOOTHING_FACTOR;
+      
+      // Update opponent paddle from network data
+      Physics.updatePaddle(opponentPaddle, this.opponentPaddleY, this.canvas.height, opponentPaddle.speed);
+      
+      // If host, also send ball state
+      if (this.multiplayer.isHost && this.ball) {
+        this.multiplayer.sendBallState(this.ball.x, this.ball.y, this.ball.vx, this.ball.vy);
+      }
+      
+      return; // Exit early for online mode
+    }
+
+    // Player 1 input (single player and local multiplayer modes)
     const p1Input = this.controls.getPlayer1Input(this.mode);
     let p1Direction = p1Input.direction;
     if (p1Reversed && p1Direction !== 0) {
@@ -577,7 +706,7 @@ class Game {
       const targetY = this.ai.update(this.ball, this.paddle2, this.canvas);
       this.ai.movePaddle(this.paddle2, targetY, this.paddle2.speed, this.canvas.height);
     } else {
-      // Player 2 controls
+      // Player 2 controls (local multiplayer)
       const p2Input = this.controls.getPlayer2Input(this.mode);
       let p2Direction = p2Input.direction;
       if (p2Reversed && p2Direction !== 0) {
@@ -763,6 +892,353 @@ class Game {
       this.ball.vx += direction * Math.cos(angle) * 2;
       this.ball.vy += Math.sin(angle) * 2;
     }
+  }
+
+  // ==========================================
+  // ONLINE MULTIPLAYER METHODS
+  // ==========================================
+
+  // Validation constants (match server-side validation)
+  static USERNAME_MIN_LENGTH = 3;
+  static USERNAME_MAX_LENGTH = 20;
+  static USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
+  static ROOM_CODE_LENGTH = 6;
+  
+  // Network smoothing configuration
+  // Higher values = faster interpolation (more responsive but jerkier)
+  // Lower values = slower interpolation (smoother but more latency)
+  static PADDLE_SMOOTHING_FACTOR = 0.5; // Range: 0.1 (smooth) to 1.0 (instant)
+
+  /**
+   * Validate username
+   * @param {string} username - Username to validate
+   * @returns {{ valid: boolean, error?: string }}
+   */
+  validateUsername(username) {
+    if (!username || typeof username !== 'string') {
+      return { valid: false, error: 'Username is required' };
+    }
+    
+    const trimmed = username.trim();
+    
+    if (trimmed.length < Game.USERNAME_MIN_LENGTH || trimmed.length > Game.USERNAME_MAX_LENGTH) {
+      return { valid: false, error: `Username must be ${Game.USERNAME_MIN_LENGTH}-${Game.USERNAME_MAX_LENGTH} characters` };
+    }
+    
+    if (!Game.USERNAME_PATTERN.test(trimmed)) {
+      return { valid: false, error: 'Username can only contain letters, numbers, _ and -' };
+    }
+    
+    return { valid: true };
+  }
+
+  /**
+   * Start online mode - show username input or connect
+   */
+  startOnlineMode() {
+    this.mode = 'online';
+    const username = Storage.getUsername();
+    
+    if (username && this.validateUsername(username).valid) {
+      // Already have valid username, connect directly
+      this.connectToServer();
+    } else {
+      // Need username first
+      Screens.showUsernameInput();
+    }
+  }
+
+  /**
+   * Handle username submission
+   */
+  async handleUsernameSubmit() {
+    const input = document.getElementById('username-input');
+    const username = input ? input.value.trim() : '';
+    
+    // Validate username using shared validation
+    const validation = this.validateUsername(username);
+    if (!validation.valid) {
+      Screens.showError(validation.error, 'back');
+      return;
+    }
+    
+    // Save username
+    Storage.saveUsername(username);
+    
+    // Connect to server
+    this.connectToServer();
+  }
+
+  /**
+   * Connect to the multiplayer server
+   */
+  async connectToServer() {
+    Screens.showConnecting();
+    
+    try {
+      // Initialize multiplayer client if needed
+      if (!this.multiplayer) {
+        this.multiplayer = new MultiplayerClient();
+        this.setupMultiplayerCallbacks();
+      }
+      
+      // Connect with retry
+      await this.multiplayer.connect({ maxRetries: 3 });
+      
+      // Register with username
+      const username = Storage.getUsername();
+      const registerResult = await this.multiplayer.register(username);
+      
+      // Check if we reconnected to an existing game
+      if (registerResult.reconnected && registerResult.gameState) {
+        console.log('Reconnecting to game in progress...');
+        // Restore game state and continue playing
+        this.handleReconnection(registerResult);
+        return;
+      }
+      
+      // Show online lobby
+      Screens.showOnlineLobby();
+    } catch (err) {
+      console.error('Connection error:', err);
+      Screens.showError('Could not connect to server. Please try again.', 'back');
+    }
+  }
+
+  /**
+   * Setup multiplayer event callbacks
+   */
+  setupMultiplayerCallbacks() {
+    // Game start
+    this.multiplayer.onGameStart = (data) => {
+      console.log('Online game starting:', data);
+      this.startOnlineGame(data);
+    };
+    
+    // Opponent paddle movement
+    this.multiplayer.onOpponentMove = (position) => {
+      this.opponentTargetY = position;
+    };
+    
+    // Ball update (guest only)
+    this.multiplayer.onBallUpdate = (ballState) => {
+      if (this.multiplayer.isGuest && this.ball) {
+        this.ball.x = ballState.x;
+        this.ball.y = ballState.y;
+        this.ball.vx = ballState.vx;
+        this.ball.vy = ballState.vy;
+      }
+    };
+    
+    // Score sync
+    this.multiplayer.onScoreSync = (scores) => {
+      this.scores = scores;
+    };
+    
+    // Match complete
+    this.multiplayer.onMatchComplete = (data) => {
+      this.state = 'gameover';
+      Screens.showOnlineGameOver(data.winnerIndex, data.scores, this.multiplayer.playerIndex);
+      disableGameplayTouchPrevention(this.canvas);
+    };
+    
+    // Rematch requested
+    this.multiplayer.onRematchRequested = () => {
+      Screens.showRematchRequested();
+    };
+    
+    // Opponent disconnected
+    this.multiplayer.onOpponentDisconnect = () => {
+      this.state = 'menu';
+      this.resetGame();
+      Screens.showOpponentDisconnected();
+    };
+    
+    // Connection error
+    this.multiplayer.onConnectionError = (err) => {
+      console.error('Connection lost:', err);
+      this.state = 'menu';
+      this.resetGame();
+      Screens.showError('Connection lost. Please reconnect.', 'menu');
+    };
+    
+    // Player reconnected (opponent came back)
+    this.multiplayer.onPlayerReconnected = (_data) => {
+      console.log('Opponent reconnected to the game');
+      // Resume the game if we were waiting
+      if (this.state === 'paused' || this.state === 'menu') {
+        // Could show a notification that opponent is back
+        // For now, just continue - the game state is preserved
+      }
+    };
+  }
+
+  /**
+   * Handle reconnection to a game in progress
+   * @param {Object} data - Reconnection data from server
+   */
+  handleReconnection(data) {
+    console.log('Handling reconnection:', data);
+    
+    this.mode = 'online';
+    this.variant = data.gameState.gameMode || 'classic';
+    
+    // Don't reset game - restore state
+    this.scores = data.gameState.scores || [0, 0];
+    
+    // Set win score based on variant
+    if (this.variant === 'chaos') {
+      this.winScore = 7;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
+    } else if (this.variant === 'speedrun') {
+      this.winScore = 5;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED * 1.5;
+    } else {
+      this.winScore = CONFIG.GAME.WIN_SCORE;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
+    }
+    
+    // Initialize game objects
+    this.initGameObjects();
+    
+    // Set initial opponent paddle position
+    this.opponentTargetY = this.paddle2.y + this.paddle2.height / 2;
+    this.opponentPaddleY = this.opponentTargetY;
+    
+    // Hide menu overlay
+    Screens.hide();
+    
+    // Start playing immediately (no countdown for reconnection)
+    this.state = 'playing';
+    Physics.resetBall(this.ball, this.canvas, null);
+    this.ball.speed = this.baseBallSpeed;
+    
+    // Enable touch prevention
+    enableGameplayTouchPrevention(this.canvas);
+    
+    // Start power-ups for chaos mode
+    if (this.variant === 'chaos') {
+      this.powerups.startSpawns(this.canvas);
+    }
+    
+    console.log('Game reconnected and resumed');
+  }
+
+  /**
+   * Start quick match (random matchmaking)
+   */
+  async startQuickMatch() {
+    if (!this.multiplayer || !this.multiplayer.isConnected) {
+      await this.connectToServer();
+      if (!this.multiplayer || !this.multiplayer.isConnected) return;
+    }
+    
+    Screens.showMatchmaking('Searching for opponent...');
+    
+    try {
+      const result = await this.multiplayer.findMatch('classic');
+      
+      if (!result.matched) {
+        // Waiting in queue
+        Screens.showMatchmaking('Waiting for opponent...');
+      }
+      // If matched, onGameStart will be called
+    } catch (err) {
+      console.error('Matchmaking error:', err);
+      Screens.showError('Could not find match. Please try again.', 'onlineBack');
+    }
+  }
+
+  /**
+   * Create a private online room
+   */
+  async createOnlineRoom() {
+    if (!this.multiplayer || !this.multiplayer.isConnected) {
+      await this.connectToServer();
+      if (!this.multiplayer || !this.multiplayer.isConnected) return;
+    }
+    
+    try {
+      const roomCode = await this.multiplayer.createRoom('classic');
+      Screens.showWaitingForOpponent(roomCode);
+    } catch (err) {
+      console.error('Create room error:', err);
+      Screens.showError('Could not create room. Please try again.', 'onlineBack');
+    }
+  }
+
+  /**
+   * Handle joining a room by code
+   */
+  async handleJoinRoom() {
+    const input = document.getElementById('room-code-input');
+    const roomCode = input ? input.value.trim().toUpperCase() : '';
+    
+    if (roomCode.length !== Game.ROOM_CODE_LENGTH) {
+      Screens.showError(`Room code must be ${Game.ROOM_CODE_LENGTH} characters`, 'joinRoom');
+      return;
+    }
+    
+    if (!this.multiplayer || !this.multiplayer.isConnected) {
+      await this.connectToServer();
+      if (!this.multiplayer || !this.multiplayer.isConnected) return;
+    }
+    
+    Screens.showConnecting();
+    
+    try {
+      await this.multiplayer.joinRoom(roomCode);
+      // onGameStart will be called when game starts
+    } catch (err) {
+      console.error('Join room error:', err);
+      Screens.showError(err.message || 'Could not join room', 'onlineBack');
+    }
+  }
+
+  /**
+   * Start an online game
+   * @param {Object} data - Game start data from server
+   */
+  startOnlineGame(data) {
+    this.mode = 'online';
+    this.variant = data.gameMode || 'classic';
+    this.resetGame();
+    
+    // Set win score based on variant
+    if (this.variant === 'chaos') {
+      this.winScore = 7;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
+    } else if (this.variant === 'speedrun') {
+      this.winScore = 5;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED * 1.5;
+    } else {
+      this.winScore = CONFIG.GAME.WIN_SCORE;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
+    }
+    
+    // Initialize game objects
+    this.initGameObjects();
+    
+    // Set initial opponent paddle position
+    this.opponentTargetY = this.paddle2.y + this.paddle2.height / 2;
+    this.opponentPaddleY = this.opponentTargetY;
+    
+    // Hide menu overlay
+    Screens.hide();
+    
+    // Start countdown
+    this.startCountdown();
+    
+    // Enable touch prevention
+    enableGameplayTouchPrevention(this.canvas);
+    
+    // Start power-ups for chaos mode
+    if (this.variant === 'chaos') {
+      this.powerups.startSpawns(this.canvas);
+    }
+    
+    // Play start sound
+    sound.gameStart();
   }
 }
 
