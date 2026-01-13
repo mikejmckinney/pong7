@@ -79,11 +79,11 @@ cd pong7
 # Install dependencies
 npm install
 
-# Start a local server (any of these work)
-npx http-server .
-# or
+# Start the app using the configured npm script
+npm start
+# or use any static server on port 8080, for example:
 python3 -m http.server 8080
-# or open index.html directly in browser
+# or open index.html directly in browser (not recommended for all features)
 
 # Open http://localhost:8080 in your browser
 ```
@@ -114,13 +114,13 @@ npm run lint
 - [x] Phase 1: Core Pong gameplay (single-player vs AI)
 - [x] Phase 2: Mobile controls and responsive design
 - [x] Phase 3: Synthwave visuals and sound effects
-- [x] Phase 4: Power-up system (10 power-ups)
+- [x] Phase 4: Power-ups and special game modes
 - [x] Phase 5: Local multiplayer (same device)
-- [x] Phase 6: Backend server implementation
-- [ ] Phase 7: Database setup (Supabase)
-- [ ] Phase 8: Backend deployment (Railway)
+- [ ] Phase 6: Database setup (Supabase)
+- [ ] Phase 7: Backend deployment (Railway)
+- [ ] Phase 8: Online multiplayer integration
 - [ ] Phase 9: Frontend deployment (GitHub Pages)
-- [ ] Phase 10: Online multiplayer integration
+- [ ] Phase 10: Testing, bug fixes, polish
 
 ## 🎯 Game Specifications
 
