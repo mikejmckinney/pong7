@@ -143,7 +143,7 @@ git push
 gh run watch
 
 # Or check status
-gh run list --limit 1
+gh run list --limit 1 --json conclusion -q '.[0].conclusion'
 ```
 
 ### Step 7: Repeat Until Green
