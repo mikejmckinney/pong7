@@ -11,7 +11,7 @@ This project follows a **multi-layered testing strategy** with automated CI/CD p
 ```
 ┌─────────────────────────────────────────────┐
 │                 E2E Tests                   │  ← Few (critical paths)
-│              (Playwright/Puppeteer)          │
+│                 (Playwright)               │
 ├─────────────────────────────────────────────┤
 │            Integration Tests                │  ← Some (component interaction)
 │              (Jest + JSDOM)                 │
