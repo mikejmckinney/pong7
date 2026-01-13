@@ -1,0 +1,35 @@
+# Supabase Configuration for pong7
+# Initialize with: supabase init
+# Link to project: supabase link --project-ref <your-project-ref>
+# Apply migrations: supabase db push
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[auth]
+enabled = true
+site_url = "https://pong7.vercel.app"
+additional_redirect_urls = ["http://localhost:8080"]
+
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+
+[storage]
+enabled = false
+
+[realtime]
+enabled = true
