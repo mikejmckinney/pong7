@@ -17,7 +17,7 @@ This project follows a **multi-layered testing strategy** with automated CI/CD p
 │              (Jest + JSDOM)                 │
 ├─────────────────────────────────────────────┤
 │              Unit Tests                     │  ← Many (pure functions)
-│              (Jest/Vitest)                  │
+│              (Jest)                         │
 └─────────────────────────────────────────────┘
         The Testing Pyramid
 ```
