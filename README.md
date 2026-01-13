@@ -116,11 +116,16 @@ npm run lint
 - [x] Phase 3: Synthwave visuals and sound effects
 - [x] Phase 4: Power-ups and special game modes
 - [x] Phase 5: Local multiplayer (same device)
-- [ ] Phase 6: Database setup (Supabase)
-- [x] Phase 7: Backend server (Node.js + Socket.io) ✅ Code complete
+- [x] Phase 6: Database setup (Supabase) ✅ Configured
+- [x] Phase 7: Backend server (Node.js + Socket.io) ✅ Deployed on Render
 - [x] Phase 8: Online multiplayer integration ✅ Code complete
-- [ ] Phase 9: Frontend deployment (GitHub Pages)
+- [x] Phase 9: Frontend deployment ✅ Deployed on Vercel
 - [x] Phase 10: Testing, bug fixes, polish ✅ 185 tests passing
+
+## 🎮 Live Demo
+
+- **Play Now**: https://pong7.vercel.app
+- **Backend API**: https://pong7.onrender.com
 
 ## 🎯 Game Specifications
 

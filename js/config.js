@@ -5,15 +5,14 @@
 
 const CONFIG = {
   // Backend URL - auto-detect based on environment
-  // In production, change this to your Railway URL
+  // Production backend on Render
   BACKEND_URL: (typeof window !== 'undefined' && window.location.hostname === 'localhost')
     ? 'http://localhost:3001'
-    : 'https://pong7-server.up.railway.app',
+    : 'https://pong7.onrender.com',
   
   // Supabase configuration (for direct leaderboard queries)
-  // Set these values after setting up your Supabase project
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  SUPABASE_URL: 'https://sjeyisealyvavzjrdcgf.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_Aki6GZiFDw_-O5IA4W073w_1nubPqkU',
 
   // Game Settings
   GAME: {
