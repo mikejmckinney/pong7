@@ -193,6 +193,8 @@ describe('Game State Transitions', () => {
 });
 
 // tests/integration/controls-physics.test.js
+import { Controls } from '../../js/controls.js';
+
 describe('Controls + Physics Integration', () => {
   test('paddle moves when key pressed', () => {
     const controls = new Controls(document.createElement('canvas'));
@@ -209,6 +211,8 @@ describe('Controls + Physics Integration', () => {
 });
 
 // tests/integration/storage.test.js
+import { Storage } from '../../js/storage.js';
+
 describe('Storage Integration', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -374,6 +378,8 @@ describe('ELO Calculation', () => {
 });
 
 // tests/unit/server/validation.test.js
+const { validateUsername, generateRoomCode } = require('../../server/validation');
+
 describe('Input Validation', () => {
   describe('username validation', () => {
     test('rejects empty username', () => {
