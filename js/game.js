@@ -643,7 +643,48 @@ class Game {
     const p1Reversed = this.powerups.isReversed(1);
     const p2Reversed = this.powerups.isReversed(2);
 
-    // Player 1 input
+    // Online mode: handle based on player index
+    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isConnected) {
+      // Determine which paddle we control based on playerIndex
+      const myPaddle = this.multiplayer.isHost ? this.paddle1 : this.paddle2;
+      const opponentPaddle = this.multiplayer.isHost ? this.paddle2 : this.paddle1;
+      const myReversed = this.multiplayer.isHost ? p1Reversed : p2Reversed;
+      
+      // Get local player input (use player 1 controls for all online players)
+      const myInput = this.controls.getPlayer1Input(this.mode);
+      let myDirection = myInput.direction;
+      if (myReversed && myDirection !== 0) {
+        myDirection = -myDirection;
+      }
+      
+      // Apply local input to our paddle
+      if (myInput.y !== null) {
+        const targetY = myReversed ? (this.canvas.height - myInput.y) : myInput.y;
+        Physics.updatePaddle(myPaddle, targetY, this.canvas.height, myPaddle.speed);
+      } else if (myDirection !== 0) {
+        const targetY = myPaddle.y + myPaddle.height / 2 + (myDirection * myPaddle.speed);
+        Physics.updatePaddle(myPaddle, targetY, this.canvas.height, myPaddle.speed);
+      }
+      
+      // Send our paddle position to opponent
+      const myPaddleY = myPaddle.y + myPaddle.height / 2;
+      this.multiplayer.sendPaddlePosition(myPaddleY);
+      
+      // Smooth opponent paddle movement
+      this.opponentPaddleY += (this.opponentTargetY - this.opponentPaddleY) * 0.5;
+      
+      // Update opponent paddle from network data
+      Physics.updatePaddle(opponentPaddle, this.opponentPaddleY, this.canvas.height, opponentPaddle.speed);
+      
+      // If host, also send ball state
+      if (this.multiplayer.isHost && this.ball) {
+        this.multiplayer.sendBallState(this.ball.x, this.ball.y, this.ball.vx, this.ball.vy);
+      }
+      
+      return; // Exit early for online mode
+    }
+
+    // Player 1 input (single player and local multiplayer modes)
     const p1Input = this.controls.getPlayer1Input(this.mode);
     let p1Direction = p1Input.direction;
     if (p1Reversed && p1Direction !== 0) {
@@ -663,26 +704,6 @@ class Game {
       // AI controls paddle 2 (AI is not affected by reverse power-up for fairness)
       const targetY = this.ai.update(this.ball, this.paddle2, this.canvas);
       this.ai.movePaddle(this.paddle2, targetY, this.paddle2.speed, this.canvas.height);
-    } else if (this.mode === 'online') {
-      // Online mode: handle based on player index
-      if (this.multiplayer && this.multiplayer.isConnected) {
-        // Send our paddle position to opponent
-        const myPaddle = this.multiplayer.isHost ? this.paddle1 : this.paddle2;
-        const myPaddleY = myPaddle.y + myPaddle.height / 2;
-        this.multiplayer.sendPaddlePosition(myPaddleY);
-        
-        // Smooth opponent paddle movement
-        this.opponentPaddleY += (this.opponentTargetY - this.opponentPaddleY) * 0.5;
-        
-        // Update opponent paddle
-        const opponentPaddle = this.multiplayer.isHost ? this.paddle2 : this.paddle1;
-        Physics.updatePaddle(opponentPaddle, this.opponentPaddleY, this.canvas.height, opponentPaddle.speed);
-        
-        // If host, also send ball state
-        if (this.multiplayer.isHost && this.ball) {
-          this.multiplayer.sendBallState(this.ball.x, this.ball.y, this.ball.vx, this.ball.vy);
-        }
-      }
     } else {
       // Player 2 controls (local multiplayer)
       const p2Input = this.controls.getPlayer2Input(this.mode);

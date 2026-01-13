@@ -131,6 +131,14 @@ class MultiplayerClient {
       if (data.roomCode) {
         this.roomCode = data.roomCode;
       }
+      // Set playerIndex from the players array if we haven't set it yet
+      // This is important for waiting players who get matched
+      if (this.playerIndex === -1 && data.players && this.player) {
+        const myPlayer = data.players.find(p => p.username === this.player.username);
+        if (myPlayer !== undefined) {
+          this.playerIndex = myPlayer.index;
+        }
+      }
       if (this.onGameStart) this.onGameStart(data);
     });
     
@@ -375,6 +383,10 @@ class MultiplayerClient {
    * Leave current room
    */
   leaveRoom() {
+    // Notify server that we're leaving the room
+    if (this.socket && this.isConnected && this.roomCode) {
+      this.socket.emit('leave-room', { roomCode: this.roomCode });
+    }
     this.roomCode = null;
     this.playerIndex = -1;
   }

@@ -258,7 +258,7 @@ io.on('connection', (socket) => {
       const sanitized = usernameResult.sanitized;
       
       let player = { 
-        id: socket.id, 
+        socketId: socket.id, 
         username: sanitized, 
         display_name: sanitized 
       };
@@ -369,6 +369,17 @@ io.on('connection', (socket) => {
     if (room.players.length >= 2) {
       return callback({ success: false, error: 'Room is full' });
     }
+    
+    // Verify the host is still connected before allowing join
+    const host = room.players[0];
+    if (host) {
+      const hostSocket = io.sockets.sockets.get(host.socketId);
+      if (!hostSocket || !hostSocket.connected) {
+        // Host is disconnected, clean up the room
+        gameRooms.delete(codeResult.normalized);
+        return callback({ success: false, error: 'Room host has disconnected' });
+      }
+    }
 
     room.players.push(player);
     socket.join(codeResult.normalized);
@@ -474,6 +485,33 @@ io.on('connection', (socket) => {
     const index = matchmakingQueue.findIndex(p => p.player.socketId === socket.id);
     if (index !== -1) {
       matchmakingQueue.splice(index, 1);
+    }
+  });
+
+  socket.on('leave-room', ({ roomCode }) => {
+    if (!roomCode) return;
+    
+    const room = gameRooms.get(roomCode);
+    if (room) {
+      // Remove player from room
+      const playerIndex = room.players.findIndex(p => p.socketId === socket.id);
+      if (playerIndex !== -1) {
+        room.players.splice(playerIndex, 1);
+      }
+      
+      // Leave the socket.io room
+      socket.leave(roomCode);
+      socket.roomCode = null;
+      socket.playerIndex = undefined;
+      
+      // Notify remaining players
+      socket.to(roomCode).emit('opponent-disconnected');
+      
+      // Clean up empty room
+      if (room.players.length === 0) {
+        gameRooms.delete(roomCode);
+        console.log(`Room ${roomCode} deleted (all players left)`);
+      }
     }
   });
 
