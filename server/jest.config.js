@@ -4,5 +4,7 @@ module.exports = {
   collectCoverageFrom: ['*.js', 'lib/*.js'],
   coveragePathIgnorePatterns: ['/node_modules/', '*.test.js'],
   testTimeout: 10000,
-  verbose: true
+  verbose: true,
+  // Force exit after tests complete (handles server intervals/timeouts)
+  forceExit: true
 };

@@ -283,7 +283,7 @@ The `test.sh` script validates repository structure. Required files:
 7. ✅ Phase 7: Backend server (Node.js + Socket.io) - Code complete
 8. ✅ Phase 8: Online multiplayer integration - Code complete
 9. ⏳ Phase 9: Frontend deployment (GitHub Pages) - Not started
-10. ✅ Phase 10: Testing, bug fixes, polish (129 tests passing)
+10. ✅ Phase 10: Testing, bug fixes, polish (156 tests passing: 84 frontend + 72 backend)
 
 ## Related Files
 
@@ -302,7 +302,7 @@ The `test.sh` script validates repository structure. Required files:
 3. **Follow** `.github/prompts/repo-onboarding.md` for comprehensive onboarding
 4. **Refer to** `docs/prompts/` for detailed game specifications
 5. **Run** `npm test` to ensure all 84 frontend tests pass
-6. **Run** `cd server && npm test` to ensure all 45 backend tests pass
+6. **Run** `cd server && npm test` to ensure all 72 backend tests pass (27 integration + 45 unit)
 7. **Run** `./test.sh` to verify repository structure
 8. **Ensure CI passes** before marking tasks complete (self-healing protocol)
 9. **Check** `.github/agents/self-healing.agent.md` if CI fails
