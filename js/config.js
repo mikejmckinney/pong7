@@ -11,8 +11,9 @@ const CONFIG = {
     : 'https://pong7.onrender.com',
   
   // Supabase configuration (for direct leaderboard queries)
+  // Using Supabase publishable key (recommended over legacy anon key)
   SUPABASE_URL: 'https://sjeyisealyvavzjrdcgf.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZXlpc2VhbHl2YXZ6anJkY2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNDIyNTQsImV4cCI6MjA4MzkxODI1NH0.yYOJKe2wfj6vt1Jjl-HpiF8_B4q4b5OgPOA9BW03QBI',
+  SUPABASE_ANON_KEY: 'sb_publishable_Aki6GZiFDw_-O5IA4W073w_1nubPqkU',
 
   // Game Settings
   GAME: {
