@@ -117,8 +117,8 @@ npm run lint
 - [x] Phase 4: Power-up system (10 power-ups)
 - [x] Phase 5: Local multiplayer (same device)
 - [x] Phase 6: Backend server implementation
-- [ ] Phase 7: Backend deployment (Railway)
-- [ ] Phase 8: Database setup (Supabase)
+- [ ] Phase 7: Database setup (Supabase)
+- [ ] Phase 8: Backend deployment (Railway)
 - [ ] Phase 9: Frontend deployment (GitHub Pages)
 - [ ] Phase 10: Online multiplayer integration
 
