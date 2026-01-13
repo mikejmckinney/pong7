@@ -15,8 +15,9 @@ This is a **web-based Pong game** repository focused on mobile devices with a re
   - Backend: Railway (free tier)
   - Database: Supabase (free tier)
 - **Build Tool**: None (vanilla JavaScript, no build step required)
-- **Test Framework**: None configured yet
-- **Linting**: None configured yet
+- **Test Framework**: Jest (unit/integration), Playwright (E2E)
+- **Linting**: ESLint
+- **CI/CD**: GitHub Actions (`.github/workflows/ci-tests.yml`)
 
 ## Repository Structure
 
@@ -34,7 +35,8 @@ pong7/
 │   │   ├── repo-onboarding.md
 │   │   └── copilot-onboarding.md
 │   └── workflows/       # GitHub Actions
-│       └── verify-checkpoints.yml
+│       ├── verify-checkpoints.yml
+│       └── ci-tests.yml  # CI/CD pipeline
 ├── docs/                # Project documentation
 │   └── prompts/         # Detailed game design documentation
 │       ├── README.md                      # Main project overview
@@ -45,7 +47,8 @@ pong7/
 │       ├── 05-backend.md                  # Server implementation
 │       ├── 06-frontend-multiplayer.md     # Multiplayer client
 │       ├── 07-deployment.md               # Deployment guides
-│       └── 08-file-structure.md           # Project file organization
+│       ├── 08-file-structure.md           # Project file organization
+│       └── 09-testing.md                  # Testing strategy and QA
 ├── AGENT.md             # Deprecated (required by test.sh); see AGENTS.md
 ├── AGENTS.md            # Agent workflow and guidelines
 ├── install.sh           # Codespace/dotfiles installation script
@@ -90,10 +93,66 @@ Expected output: All checks should pass (21 passed, 0 warnings, 0 failed).
 Once implemented, the frontend will be static files served directly.
 
 ### Test
-**Not configured yet** - No test framework exists.
+```bash
+# Run unit tests (when implemented)
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run E2E tests
+npm run test:e2e
+
+# Run backend tests
+cd server && npm test
+```
 
 ### Lint
-**Not configured yet** - No linter configured.
+```bash
+# Lint frontend code
+npm run lint
+
+# Auto-fix lint issues
+npm run lint:fix
+
+# Lint backend code
+cd server && npm run lint
+```
+
+### CI/CD
+The CI pipeline runs automatically on every push. Check status:
+```bash
+# View recent CI runs
+gh run list --limit 5
+
+# View specific run details
+gh run view <run-id>
+
+# Get failed job logs
+gh run view <run-id> --log-failed
+```
+
+## Testing Strategy
+
+### Test Pyramid
+- **Unit Tests (Many)**: Test pure functions in isolation (utils, physics, AI logic)
+- **Integration Tests (Some)**: Test component interactions (game state, controls+physics)
+- **E2E Tests (Few)**: Test critical user journeys (start game, complete match)
+
+### Self-Healing CI Protocol
+CI failures must be fixed before marking any task complete:
+
+1. Check CI status: `gh run list --limit 1`
+2. If failing, get logs: `gh run view <id> --log-failed`
+3. Fix the issue in code
+4. Commit and push the fix
+5. Verify CI passes before continuing
+
+See `.github/agents/self-healing.agent.md` for detailed protocol.
+
+### Coverage Targets
+- Core modules (utils, physics, ai): 80%+
+- Overall project: 70%+
 
 ## Conventions
 
@@ -196,6 +255,9 @@ The `test.sh` script validates repository structure. Required files:
 - **Agent Guidelines**: `AGENTS.md`
 - **Onboarding Process**: `.github/prompts/repo-onboarding.md`
 - **Copilot Setup**: `.github/prompts/copilot-onboarding.md`
+- **Testing Strategy**: `docs/prompts/09-testing.md`
+- **Self-Healing CI**: `.github/agents/self-healing.agent.md`
+- **CI Pipeline**: `.github/workflows/ci-tests.yml`
 
 ## Notes for AI Agents
 
@@ -204,4 +266,6 @@ The `test.sh` script validates repository structure. Required files:
 3. **Follow** `.github/prompts/repo-onboarding.md` for comprehensive onboarding
 4. **Refer to** `docs/prompts/` for detailed game specifications
 5. **Run** `./test.sh` before considering work complete
-6. **Remember**: This is currently a documentation-only repository
+6. **Ensure CI passes** before marking tasks complete (self-healing protocol)
+7. **Check** `.github/agents/self-healing.agent.md` if CI fails
+8. **Remember**: This is currently a documentation-only repository
