@@ -192,6 +192,15 @@ body {
   color: var(--neon-orange);
 }
 
+/* Variant description in buttons */
+.menu-btn .variant-desc {
+  display: block;
+  font-size: 0.5rem;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+  font-weight: normal;
+}
+
 /* Back Button */
 .back-btn {
   font-family: 'Press Start 2P', monospace;

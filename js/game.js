@@ -13,6 +13,7 @@ class Game {
     // Game state
     this.state = 'menu'; // menu, countdown, playing, paused, gameover
     this.mode = null;    // single, local, online
+    this.variant = 'classic'; // classic, chaos, speedrun
     this.difficulty = 'medium';
 
     // Game objects
@@ -41,6 +42,10 @@ class Game {
     this.controls = new Controls(this.canvas);
     this.ai = new AI(this.difficulty);
     this.powerups = new PowerUpManager();
+    this.powerups.setGame(this);
+
+    // Base paddle dimensions for power-up modifications
+    this.basePaddleHeight = CONFIG.GAME.PADDLE_HEIGHT;
 
     // Initialize screens
     Screens.init(this.overlay, this.handleMenuAction.bind(this));
@@ -164,7 +169,7 @@ class Game {
 
       case 'local':
         this.mode = 'local';
-        this.startGame('local');
+        Screens.showVariantSelect();
         break;
 
       case 'online':
@@ -175,7 +180,12 @@ class Game {
         this.difficulty = value;
         Storage.updateSetting('difficulty', value);
         this.ai.setDifficulty(value);
-        this.startGame('single');
+        Screens.showVariantSelect();
+        break;
+
+      case 'variant':
+        this.variant = value;
+        this.startGame(this.mode, value);
         break;
 
       case 'settings':
@@ -193,6 +203,12 @@ class Game {
       case 'back':
         if (Screens.currentScreen === 'settings' && this.state === 'paused') {
           Screens.showPauseMenu();
+        } else if (Screens.currentScreen === 'variantSelect') {
+          if (this.mode === 'single') {
+            Screens.showDifficultySelect();
+          } else {
+            Screens.showModeSelect();
+          }
         } else if (Screens.currentScreen === 'difficultySelect') {
           Screens.showModeSelect();
         } else if (Screens.currentScreen === 'modeSelect') {
@@ -208,12 +224,12 @@ class Game {
 
       case 'restart':
         this.resetGame();
-        this.startGame(this.mode);
+        this.startGame(this.mode, this.variant);
         break;
 
       case 'rematch':
         this.resetGame();
-        this.startGame(this.mode);
+        this.startGame(this.mode, this.variant);
         break;
 
       case 'quit':
@@ -227,10 +243,21 @@ class Game {
   /**
    * Start a new game
    * @param {string} mode - Game mode
+   * @param {string} variant - Game variant (classic, chaos, speedrun)
    */
-  startGame(mode) {
+  startGame(mode, variant = 'classic') {
     this.mode = mode;
+    this.variant = variant;
     this.resetGame();
+
+    // Set win score based on variant
+    if (variant === 'chaos') {
+      this.winScore = 7;
+    } else if (variant === 'speedrun') {
+      this.winScore = 5;
+    } else {
+      this.winScore = CONFIG.GAME.WIN_SCORE;
+    }
 
     // Initialize game objects
     this.initGameObjects();
@@ -243,6 +270,11 @@ class Game {
 
     // Enable touch prevention during gameplay
     enableGameplayTouchPrevention(this.canvas);
+
+    // Start power-ups for chaos mode
+    if (variant === 'chaos') {
+      this.powerups.startSpawns(this.canvas);
+    }
 
     // Play start sound
     sound.gameStart();
@@ -345,6 +377,9 @@ class Game {
    */
   scorePoint(scorer) {
     this.scores[scorer - 1]++;
+
+    // Clear point-ending power-up effects (like speedBall)
+    this.powerups.clearPointEffects();
 
     // Play sound
     if (this.mode === 'single') {
@@ -491,29 +526,49 @@ class Game {
    * Update paddle positions based on input
    */
   updatePaddles() {
+    // Apply power-up paddle size modifiers
+    const p1Multiplier = this.powerups.getPaddleSizeMultiplier(1);
+    const p2Multiplier = this.powerups.getPaddleSizeMultiplier(2);
+    this.paddle1.height = this.basePaddleHeight * p1Multiplier;
+    this.paddle2.height = this.basePaddleHeight * p2Multiplier;
+
+    // Check for reversed controls
+    const p1Reversed = this.powerups.isReversed(1);
+    const p2Reversed = this.powerups.isReversed(2);
+
     // Player 1 input
     const p1Input = this.controls.getPlayer1Input(this.mode);
+    let p1Direction = p1Input.direction;
+    if (p1Reversed && p1Direction !== 0) {
+      p1Direction = -p1Direction;
+    }
 
     if (p1Input.y !== null) {
-      Physics.updatePaddle(this.paddle1, p1Input.y, this.canvas.height, this.paddle1.speed);
-    } else if (p1Input.direction !== 0) {
-      const targetY = this.paddle1.y + this.paddle1.height / 2 + (p1Input.direction * this.paddle1.speed);
+      const targetY = p1Reversed ? (this.canvas.height - p1Input.y) : p1Input.y;
+      Physics.updatePaddle(this.paddle1, targetY, this.canvas.height, this.paddle1.speed);
+    } else if (p1Direction !== 0) {
+      const targetY = this.paddle1.y + this.paddle1.height / 2 + (p1Direction * this.paddle1.speed);
       Physics.updatePaddle(this.paddle1, targetY, this.canvas.height, this.paddle1.speed);
     }
 
     // Player 2 / AI input
     if (this.mode === 'single') {
-      // AI controls paddle 2
+      // AI controls paddle 2 (AI is not affected by reverse power-up for fairness)
       const targetY = this.ai.update(this.ball, this.paddle2, this.canvas);
       this.ai.movePaddle(this.paddle2, targetY, this.paddle2.speed, this.canvas.height);
     } else {
       // Player 2 controls
       const p2Input = this.controls.getPlayer2Input(this.mode);
+      let p2Direction = p2Input.direction;
+      if (p2Reversed && p2Direction !== 0) {
+        p2Direction = -p2Direction;
+      }
 
       if (p2Input.y !== null) {
-        Physics.updatePaddle(this.paddle2, p2Input.y, this.canvas.height, this.paddle2.speed);
-      } else if (p2Input.direction !== 0) {
-        const targetY = this.paddle2.y + this.paddle2.height / 2 + (p2Input.direction * this.paddle2.speed);
+        const targetY = p2Reversed ? (this.canvas.height - p2Input.y) : p2Input.y;
+        Physics.updatePaddle(this.paddle2, targetY, this.canvas.height, this.paddle2.speed);
+      } else if (p2Direction !== 0) {
+        const targetY = this.paddle2.y + this.paddle2.height / 2 + (p2Direction * this.paddle2.speed);
         Physics.updatePaddle(this.paddle2, targetY, this.canvas.height, this.paddle2.speed);
       }
     }
@@ -523,11 +578,26 @@ class Game {
    * Update ball position and check collisions
    */
   updateBall() {
+    // Apply ball speed modifier from power-ups
+    const speedMultiplier = this.powerups.modifiers.ballSpeedMultiplier;
+    const gameSpeedMultiplier = this.powerups.modifiers.gameSpeedMultiplier;
+
     // Add current position to trail
     this.ballTrail.push({ x: this.ball.x, y: this.ball.y });
     if (this.ballTrail.length > CONFIG.VISUALS.TRAIL_LENGTH) {
       this.ballTrail.shift();
     }
+
+    // Apply curve effect if active
+    if (this.powerups.modifiers.curveAmount !== 0) {
+      this.ball.vy += this.powerups.modifiers.curveAmount;
+    }
+
+    // Temporarily modify ball velocity for speed effects
+    const originalVx = this.ball.vx;
+    const originalVy = this.ball.vy;
+    this.ball.vx *= speedMultiplier * gameSpeedMultiplier;
+    this.ball.vy *= speedMultiplier * gameSpeedMultiplier;
 
     // Update ball physics
     const result = Physics.updateBall(
@@ -536,6 +606,12 @@ class Game {
       this.paddle2,
       this.canvas
     );
+
+    // Restore original velocities (adjusted for any bounces)
+    const vxRatio = originalVx !== 0 ? this.ball.vx / (originalVx * speedMultiplier * gameSpeedMultiplier) : 1;
+    const vyRatio = originalVy !== 0 ? this.ball.vy / (originalVy * speedMultiplier * gameSpeedMultiplier) : 1;
+    this.ball.vx = originalVx * vxRatio;
+    this.ball.vy = originalVy * vyRatio;
 
     // Handle collisions
     if (result.hitPaddle) {
@@ -547,9 +623,17 @@ class Game {
       sound.wallBounce();
     }
 
-    // Handle scoring
+    // Handle scoring - check for shield first
     if (result.scored !== null) {
-      this.scorePoint(result.scored);
+      const defendingPlayer = result.scored === 1 ? 2 : 1;
+      if (this.powerups.useShield(defendingPlayer)) {
+        // Shield blocked the goal - bounce the ball back
+        this.ball.vx = -this.ball.vx;
+        this.ball.x = result.scored === 1 ? this.canvas.width - 20 : 20;
+        sound.wallBounce();
+      } else {
+        this.scorePoint(result.scored);
+      }
     }
   }
 
@@ -601,6 +685,9 @@ class Game {
 
     // Only draw game objects if initialized
     if (this.paddle1 && this.paddle2 && this.ball) {
+      // Draw shields (behind paddles)
+      this.powerups.drawShields(this.ctx, this.canvas);
+
       // Draw paddles
       Renderer.drawPaddle(this.ctx, this.paddle1, Renderer.colors.neonCyan);
       Renderer.drawPaddle(this.ctx, this.paddle2, Renderer.colors.neonPink);
@@ -616,6 +703,9 @@ class Game {
 
       // Draw score
       Renderer.drawScore(this.ctx, this.canvas, this.scores[0], this.scores[1]);
+
+      // Draw power-up effect indicators
+      this.powerups.drawEffectIndicators(this.ctx, this.canvas);
     }
 
     // Draw state-specific overlays
@@ -624,6 +714,22 @@ class Game {
     }
 
     // Note: pause and game over overlays are handled by Screens module
+  }
+
+  /**
+   * Spawn an extra ball (for multi-ball power-up)
+   */
+  spawnExtraBall() {
+    // Multi-ball implementation would require tracking multiple balls
+    // For now, just speed up the current ball slightly
+    if (this.ball) {
+      this.ball.speed = Math.min(this.ball.speed * 1.2, 15);
+      const direction = Math.random() < 0.5 ? 1 : -1;
+      const angle = Utils.randomRange(-Math.PI / 4, Math.PI / 4);
+      // Add some velocity perturbation
+      this.ball.vx += direction * Math.cos(angle) * 2;
+      this.ball.vy += Math.sin(angle) * 2;
+    }
   }
 }
 
