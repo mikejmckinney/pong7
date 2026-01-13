@@ -538,3 +538,8 @@ class PowerUpManager {
     return player === 1 ? this.modifiers.player1Reversed : this.modifiers.player2Reversed;
   }
 }
+
+// Export for Node.js/testing environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { PowerUpManager, POWERUP_TYPES, POWERUP_TYPE_KEYS };
+}
