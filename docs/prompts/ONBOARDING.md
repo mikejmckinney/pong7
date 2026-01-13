@@ -18,6 +18,7 @@ All project specifications are in this `docs/prompts/` folder:
 | `06-frontend-multiplayer.md` | Client multiplayer integration | Phase 8 |
 | `07-deployment.md` | Railway, GitHub Pages setup | Phase 7, 9 |
 | `08-file-structure.md` | Project organization | Reference |
+| `09-testing.md` | Testing strategy, CI/CD, QA | Phase 10, All phases |
 
 ### Step 2: Complete Verification Checkpoints
 Each documentation file ends with a **Verification Checkpoint**. You must:
@@ -41,7 +42,7 @@ Phase 6:  Database setup (Supabase)
 Phase 7:  Backend deployment (Railway)
 Phase 8:  Online multiplayer integration
 Phase 9:  Frontend deployment (GitHub Pages)
-Phase 10: Testing and polish
+Phase 10: Testing and polish             → See: 09-testing.md
 ```
 
 ---
@@ -93,9 +94,45 @@ pong-game/
 3. **DO** implement in phase order
 4. **DO** test each phase before moving on
 5. **DO** deploy backend (Phase 7) before testing online multiplayer
-6. **DON'T** skip checkpoints
-7. **DON'T** implement features not in the spec
-8. **DON'T** over-engineer solutions
+6. **DO** ensure CI passes before marking tasks complete (self-healing)
+7. **DON'T** skip checkpoints
+8. **DON'T** implement features not in the spec
+9. **DON'T** over-engineer solutions
+10. **DON'T** mark tasks complete if CI is failing
+
+---
+
+## Testing Requirements
+
+Testing is **not just Phase 10** - it's continuous throughout development.
+
+### Continuous Testing Protocol
+
+1. **Every phase**: Write unit tests for new functions
+2. **Before commits**: Run `npm test` and `npm run lint`
+3. **After push**: Verify CI passes (check GitHub Actions)
+4. **If CI fails**: Fix issues before continuing (see `09-testing.md`)
+
+### Test Pyramid
+
+```
+     E2E      ← Few (critical user journeys)
+   ─────────
+  Integration ← Some (component interactions)  
+ ─────────────
+    Unit      ← Many (pure functions, logic)
+```
+
+### Self-Healing CI
+
+If tests fail in CI:
+1. Read error logs from GitHub Actions artifacts
+2. Fix the underlying issue
+3. Push the fix
+4. Verify CI passes
+5. **Only then** continue with next task
+
+See `.github/agents/self-healing.agent.md` for detailed protocol.
 
 ---
 

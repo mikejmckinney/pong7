@@ -43,10 +43,35 @@ Expected output: All checks should pass (21 passed, 0 warnings, 0 failed)
 Once implemented, frontend will be static HTML/JS/CSS files.
 
 ### Test
-**Not configured yet** - No test framework exists.
+```bash
+# Run unit tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run E2E tests
+npm run test:e2e
+
+# Run backend tests
+cd server && npm test
+```
 
 ### Lint
-**Not configured yet** - No linter configured.
+```bash
+# Lint code
+npm run lint
+
+# Auto-fix lint issues  
+npm run lint:fix
+```
+
+### CI/CD
+The CI pipeline (`.github/workflows/ci-tests.yml`) runs on every push:
+- Lint → Unit Tests → Integration Tests → Build → E2E Tests
+
+**Self-Healing Protocol**: If CI fails, fix issues before marking tasks complete.
+See `.github/agents/self-healing.agent.md` for details.
 
 ## Project Structure
 
@@ -138,6 +163,9 @@ Always verify:
 2. [ ] AI_REPO_GUIDE.md updated if structure/commands changed
 3. [ ] Changes align with specs in `docs/prompts/`
 4. [ ] No build artifacts or temporary files committed
+5. [ ] Tests pass locally: `npm test`
+6. [ ] Lint passes: `npm run lint`
+7. [ ] CI is green after push (check GitHub Actions)
 
 ## Quality Bar
 

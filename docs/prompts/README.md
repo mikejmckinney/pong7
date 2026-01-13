@@ -29,6 +29,7 @@ Read these files in order, or reference specific sections as needed:
 | [`06-frontend-multiplayer.md`](./06-frontend-multiplayer.md) | Client-side multiplayer integration | Phase 8 |
 | [`07-deployment.md`](./07-deployment.md) | Railway, GitHub Pages, environment variables | Phase 7, 9 |
 | [`08-file-structure.md`](./08-file-structure.md) | Project organization, file purposes | Reference |
+| [`09-testing.md`](./09-testing.md) | Testing strategy, CI/CD, self-healing | Phase 10 |
 
 ## Implementation Phases
 
@@ -42,7 +43,7 @@ Phase 6:  Database setup (Supabase)                    → See: 04-database.md
 Phase 7:  Backend deployment (Railway)                 → See: 05-backend.md, 07-deployment.md
 Phase 8:  Online multiplayer integration               → See: 06-frontend-multiplayer.md
 Phase 9:  Frontend deployment (GitHub Pages)           → See: 07-deployment.md
-Phase 10: Testing, bug fixes, polish                   → See: Final Checklist below
+Phase 10: Testing, bug fixes, polish                   → See: 09-testing.md, Final Checklist below
 ```
 
 ## Key Requirements Summary

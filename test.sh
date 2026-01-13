@@ -50,8 +50,11 @@ REQUIRED_FILES=(
     ".gemini/styleguide.md"
     ".github/copilot-instructions.md"
     ".github/agents/judge.agent.md"
+    ".github/agents/self-healing.agent.md"
     ".github/prompts/copilot-onboarding.md"
     ".github/prompts/repo-onboarding.md"
+    ".github/workflows/ci-tests.yml"
+    "docs/prompts/09-testing.md"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
