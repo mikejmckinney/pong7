@@ -103,6 +103,10 @@ describe('AI', () => {
       jest.spyOn(performance, 'now').mockReturnValue(0);
     });
 
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('returns canvas center when no target set', () => {
       const ball = { x: 100, y: 100, vx: 5, vy: 0, radius: 5, speed: 5 };
       
@@ -120,7 +124,7 @@ describe('AI', () => {
       // Advance time past reaction delay
       jest.spyOn(performance, 'now').mockReturnValue(ai.reactionDelay + 1);
       
-      const targetY = ai.update(ball, paddle, canvas);
+      ai.update(ball, paddle, canvas);
       
       expect(ai.targetY).not.toBeNull();
     });
@@ -134,8 +138,9 @@ describe('AI', () => {
       jest.spyOn(performance, 'now').mockReturnValue(ai.reactionDelay + 1);
       ai.update(ball, paddle, canvas);
       
-      // With mistake chance, currentMistake should be non-zero
-      // Note: This depends on mistakeChance and random value
+      // With Math.random returning 0, which is less than mistakeChance (0.05 for medium),
+      // the mistake should be applied and currentMistake should be non-zero
+      expect(ai.currentMistake).not.toBe(0);
     });
   });
 
@@ -170,9 +175,9 @@ describe('AI', () => {
       
       const targetY = ai.calculateTargetY(ball, paddle, canvas);
       
-      // Should be close to ball.y with some error
-      expect(targetY).toBeGreaterThan(ball.y - ai.predictionError - 1);
-      expect(targetY).toBeLessThan(ball.y + ai.predictionError + 1);
+      // Should be within prediction error range around ball.y
+      expect(targetY).toBeGreaterThanOrEqual(ball.y - ai.predictionError);
+      expect(targetY).toBeLessThanOrEqual(ball.y + ai.predictionError);
     });
 
     test('harder difficulties use prediction', () => {
