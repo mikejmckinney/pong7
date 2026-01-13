@@ -167,6 +167,11 @@ const Physics = {
    * @param {number} speed - Movement speed
    */
   updatePaddle(paddle, targetY, canvasHeight, speed) {
+    // Safety check - ensure paddle.y is valid
+    if (!isFinite(paddle.y) || paddle.y === null) {
+      paddle.y = (canvasHeight - paddle.height) / 2;
+    }
+    
     const centerY = paddle.y + paddle.height / 2;
     const diff = targetY - centerY;
 

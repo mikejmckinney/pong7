@@ -23,6 +23,10 @@ const Utils = {
    * @returns {number} Clamped value
    */
   clamp(value, min, max) {
+    // Handle non-finite values
+    if (!isFinite(value)) {
+      return min;
+    }
     return Math.max(min, Math.min(max, value));
   },
 

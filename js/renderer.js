@@ -84,6 +84,12 @@ const Renderer = {
    * @param {number} glowIntensity - Glow blur amount
    */
   drawPaddle(ctx, paddle, color, glowIntensity = 20) {
+    // Safety check for valid paddle dimensions
+    if (!paddle || paddle.width <= 0 || paddle.height <= 0 || 
+        !isFinite(paddle.x) || !isFinite(paddle.y)) {
+      return;
+    }
+
     // Glow effect
     ctx.shadowColor = color;
     ctx.shadowBlur = glowIntensity;
@@ -115,12 +121,20 @@ const Renderer = {
    * @param {string} color - Ball color
    */
   drawBall(ctx, ball, trail = [], color = null) {
+    // Safety check for valid ball
+    if (!ball || !isFinite(ball.x) || !isFinite(ball.y) || ball.radius <= 0) {
+      return;
+    }
+
     const ballColor = color || this.colors.white;
     const glowColor = this.colors.neonPurple;
 
     // Draw trail
     if (trail && trail.length > 0) {
       for (let i = 0; i < trail.length; i++) {
+        if (!isFinite(trail[i].x) || !isFinite(trail[i].y)) {
+          continue;
+        }
         const alpha = (i + 1) / trail.length * 0.5;
         const radius = ball.radius * 0.8 * (i + 1) / trail.length;
 
