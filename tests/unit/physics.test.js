@@ -2,21 +2,16 @@
  * Unit tests for Physics module
  */
 
-const fs = require('fs');
 const path = require('path');
 
-// Load dependencies
-const configCode = fs.readFileSync(path.join(__dirname, '../../js/config.js'), 'utf8');
-const utilsCode = fs.readFileSync(path.join(__dirname, '../../js/utils.js'), 'utf8');
-const physicsCode = fs.readFileSync(path.join(__dirname, '../../js/physics.js'), 'utf8');
+// Load dependencies in order
+const CONFIG = require(path.join(__dirname, '../../js/config.js'));
+global.CONFIG = CONFIG;
 
-// Create modules using Function constructor
-// eslint-disable-next-line no-new-func
-const CONFIG = new Function(`${configCode}\nreturn CONFIG;`)();
-// eslint-disable-next-line no-new-func
-const Utils = new Function(`${utilsCode}\nreturn Utils;`)();
-// eslint-disable-next-line no-new-func
-const Physics = new Function('CONFIG', 'Utils', `${physicsCode}\nreturn Physics;`)(CONFIG, Utils);
+const Utils = require(path.join(__dirname, '../../js/utils.js'));
+global.Utils = Utils;
+
+const Physics = require(path.join(__dirname, '../../js/physics.js'));
 
 describe('Physics', () => {
   describe('checkPaddleCollision', () => {

@@ -190,3 +190,8 @@ const Storage = {
     }
   }
 };
+
+// Export for Node.js/testing environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Storage;
+}

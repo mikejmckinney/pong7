@@ -2,18 +2,14 @@
  * Unit tests for Storage module
  */
 
-const fs = require('fs');
 const path = require('path');
 
-// Load dependencies
-const utilsCode = fs.readFileSync(path.join(__dirname, '../../js/utils.js'), 'utf8');
-const storageCode = fs.readFileSync(path.join(__dirname, '../../js/storage.js'), 'utf8');
+// Load the Utils module first (Storage depends on it)
+const Utils = require(path.join(__dirname, '../../js/utils.js'));
+global.Utils = Utils;
 
-// Create modules using Function constructor
-// eslint-disable-next-line no-new-func
-const Utils = new Function(`${utilsCode}\nreturn Utils;`)();
-// eslint-disable-next-line no-new-func
-const Storage = new Function('Utils', 'localStorage', `${storageCode}\nreturn Storage;`)(Utils, global.localStorage);
+// Load the Storage module
+const Storage = require(path.join(__dirname, '../../js/storage.js'));
 
 describe('Storage', () => {
   beforeEach(() => {

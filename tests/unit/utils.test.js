@@ -2,13 +2,10 @@
  * Unit tests for Utils module
  */
 
-const fs = require('fs');
 const path = require('path');
 
-// Load utils.js and create module
-const utilsCode = fs.readFileSync(path.join(__dirname, '../../js/utils.js'), 'utf8');
-// eslint-disable-next-line no-new-func
-const Utils = new Function(`${utilsCode}\nreturn Utils;`)();
+// Load the Utils module
+const Utils = require(path.join(__dirname, '../../js/utils.js'));
 
 describe('Utils', () => {
   describe('lerp', () => {

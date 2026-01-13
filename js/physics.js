@@ -221,3 +221,8 @@ const Physics = {
     return Utils.clamp(predictedY, 0, canvas.height);
   }
 };
+
+// Export for Node.js/testing environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Physics;
+}

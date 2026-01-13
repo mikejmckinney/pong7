@@ -81,3 +81,8 @@ Object.freeze(CONFIG.AI);
 Object.freeze(CONFIG.CANVAS);
 Object.freeze(CONFIG.AUDIO);
 Object.freeze(CONFIG.VISUALS);
+
+// Export for Node.js/testing environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = CONFIG;
+}

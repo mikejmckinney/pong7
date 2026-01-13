@@ -206,3 +206,8 @@ const Utils = {
     return `${this.padNumber(minutes, 2)}:${this.padNumber(seconds, 2)}`;
   }
 };
+
+// Export for Node.js/testing environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Utils;
+}
