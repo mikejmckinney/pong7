@@ -354,17 +354,30 @@ const Screens = {
   },
 
   /**
+   * Sanitize a string for safe HTML insertion
+   * @param {string} str - String to sanitize
+   * @returns {string} Sanitized string
+   */
+  sanitizeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+
+  /**
    * Show waiting for opponent screen (room created)
    * @param {string} roomCode - The room code
    */
   showWaitingForOpponent(roomCode) {
     this.currentScreen = 'waitingRoom';
+    // Sanitize roomCode to prevent XSS (defensive measure even for server-generated codes)
+    const sanitizedRoomCode = this.sanitizeHTML(roomCode);
     this.overlay.innerHTML = `
       <div class="screen waiting-screen">
         <h2 class="subtitle">WAITING FOR OPPONENT</h2>
         <div class="room-code-display">
           <p class="room-label">SHARE THIS CODE:</p>
-          <p class="room-code" data-testid="room-code">${roomCode}</p>
+          <p class="room-code" data-testid="room-code">${sanitizedRoomCode}</p>
         </div>
         <div class="loading-indicator">
           <span class="dot"></span>

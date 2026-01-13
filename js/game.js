@@ -534,8 +534,8 @@ class Game {
       Storage.updateStats(winner === 1, this.scores[0], this.scores[1]);
     }
 
-    // Send game over in online mode (host only)
-    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isHost) {
+    // Send game over in online mode (either player can report - server validates)
+    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isConnected) {
       this.multiplayer.sendGameOver(this.scores);
       // The server will send match-complete event which triggers showOnlineGameOver
       return;
@@ -670,8 +670,9 @@ class Game {
       const myPaddleY = myPaddle.y + myPaddle.height / 2;
       this.multiplayer.sendPaddlePosition(myPaddleY);
       
-      // Smooth opponent paddle movement
-      this.opponentPaddleY += (this.opponentTargetY - this.opponentPaddleY) * 0.5;
+      // Smooth opponent paddle movement using configurable interpolation factor
+      // This provides visual smoothing for network latency variations
+      this.opponentPaddleY += (this.opponentTargetY - this.opponentPaddleY) * Game.PADDLE_SMOOTHING_FACTOR;
       
       // Update opponent paddle from network data
       Physics.updatePaddle(opponentPaddle, this.opponentPaddleY, this.canvas.height, opponentPaddle.speed);
@@ -902,6 +903,11 @@ class Game {
   static USERNAME_MAX_LENGTH = 20;
   static USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
   static ROOM_CODE_LENGTH = 6;
+  
+  // Network smoothing configuration
+  // Higher values = faster interpolation (more responsive but jerkier)
+  // Lower values = slower interpolation (smoother but more latency)
+  static PADDLE_SMOOTHING_FACTOR = 0.5; // Range: 0.1 (smooth) to 1.0 (instant)
 
   /**
    * Validate username

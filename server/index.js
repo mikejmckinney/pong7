@@ -95,6 +95,40 @@ function cleanupRateLimits(socketId) {
   socketRateLimits.delete(socketId);
 }
 
+// Periodic cleanup of stale rate limit entries (every 5 minutes)
+// This handles edge cases where sockets disconnect without triggering the cleanup handler
+const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const RATE_LIMIT_MAX_AGE = 10 * 60 * 1000; // 10 minutes - entries older than this are stale
+
+setInterval(() => {
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  for (const [socketId, limits] of socketRateLimits.entries()) {
+    // Check if this socket is still connected
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket || !socket.connected) {
+      // Socket is not connected, check if entries are old enough to clean up
+      let allStale = true;
+      for (const [, limit] of limits.entries()) {
+        if (now - limit.windowStart < RATE_LIMIT_MAX_AGE) {
+          allStale = false;
+          break;
+        }
+      }
+      
+      if (allStale) {
+        socketRateLimits.delete(socketId);
+        cleanedCount++;
+      }
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`Rate limit cleanup: removed ${cleanedCount} stale entries`);
+  }
+}, RATE_LIMIT_CLEANUP_INTERVAL);
+
 // Initialize Supabase if credentials provided
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
@@ -111,13 +145,8 @@ const readApiLimiter = rateLimit({
   legacyHeaders: false
 });
 
-const writeApiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100, // 100 requests per 15 min for writes
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// Note: writeApiLimiter removed as no write endpoints currently exist.
+// Add it back when implementing POST/PUT/DELETE endpoints that modify data.
 
 // CORS configuration
 const corsOrigins = [
@@ -518,6 +547,18 @@ io.on('connection', (socket) => {
     room.state = 'playing';
     room.startTime = Date.now();
 
+    // Double-check host is still connected after join (race condition protection)
+    const hostSocketAfterJoin = io.sockets.sockets.get(host.socketId);
+    if (!hostSocketAfterJoin || !hostSocketAfterJoin.connected) {
+      // Host disconnected during join - clean up and notify joiner
+      room.players.pop(); // Remove the joining player
+      socket.leave(codeResult.normalized);
+      socket.roomCode = null;
+      socket.playerIndex = undefined;
+      gameRooms.delete(codeResult.normalized);
+      return callback({ success: false, error: 'Room host disconnected during join' });
+    }
+
     io.to(codeResult.normalized).emit('game-start', {
       roomCode: codeResult.normalized,
       players: room.players.map((p, i) => ({
@@ -716,6 +757,11 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Allow either player to report game-over (handles host disconnect case)
+    // The server uses its own authoritative scores, so this is safe
+    const reporterIndex = socket.playerIndex;
+    console.log(`Game-over reported by player ${reporterIndex} (${reporterIndex === 0 ? 'host' : 'guest'})`);
+    
     // Atomically transition to 'finished' state
     room.state = 'finished';
 
@@ -724,9 +770,19 @@ io.on('connection', (socket) => {
       ? room.scores
       : [0, 0];
 
-    // Log discrepancies for monitoring
+    // Log discrepancies for monitoring and detect potential cheating
     if (JSON.stringify(scores) !== JSON.stringify(finalScores)) {
+      const clientTotal = (scores[0] || 0) + (scores[1] || 0);
+      const serverTotal = finalScores[0] + finalScores[1];
+      const scoreDiff = Math.abs(clientTotal - serverTotal);
+      
       console.warn(`Score mismatch from ${socket.id}: client=${JSON.stringify(scores)} server=${JSON.stringify(finalScores)}`);
+      
+      // Flag significant score mismatches (>3 points difference suggests manipulation)
+      if (scoreDiff > 3) {
+        console.warn(`SUSPICIOUS: Large score discrepancy (${scoreDiff} points) from ${socket.id} - possible manipulation attempt`);
+        // Note: In production, consider tracking repeated offenses and implementing bans
+      }
     }
 
     await saveMatchResult(room);
@@ -819,23 +875,46 @@ io.on('connection', (socket) => {
         const username = player ? player.username : null;
         
         // Set grace period before cleanup
+        // Capture playerIndex for additional validation
+        const capturedPlayerIndex = playerIndex;
+        
         setTimeout(() => {
           const currentRoom = gameRooms.get(roomCode);
-          if (currentRoom) {
-            // Check if player reconnected
-            const reconnectInfo = username ? pendingReconnects.get(username) : null;
-            if (reconnectInfo && reconnectInfo.roomCode === roomCode) {
+          if (!currentRoom) {
+            // Room was already cleaned up, just ensure pendingReconnects is cleared
+            if (username) pendingReconnects.delete(username);
+            return;
+          }
+          
+          // Check if player reconnected
+          const reconnectInfo = username ? pendingReconnects.get(username) : null;
+          if (reconnectInfo && reconnectInfo.roomCode === roomCode) {
+            // Validate the reconnect info still matches what we expect
+            if (reconnectInfo.playerIndex === capturedPlayerIndex) {
               // Player never reconnected, clean up
               pendingReconnects.delete(username);
               console.log(`Grace period expired for ${username} in room ${roomCode}, cleaning up`);
+              
+              // Also mark the player slot as fully disconnected in the room
+              const roomPlayer = currentRoom.players[capturedPlayerIndex];
+              if (roomPlayer && roomPlayer.disconnected) {
+                // Player didn't reconnect in time, room will be cleaned up below if empty
+                console.log(`Player ${username} slot marked for cleanup`);
+              }
+            } else {
+              // Player index doesn't match - reconnect info may be stale, clean it up
+              pendingReconnects.delete(username);
             }
-            
-            // Clean up room if no connected players
-            const connectedPlayers = currentRoom.players.filter(p => !p.disconnected);
-            if (connectedPlayers.length === 0) {
-              gameRooms.delete(roomCode);
-              console.log(`Room ${roomCode} deleted (no connected players after grace period)`);
-            }
+          }
+          
+          // Clean up room if no connected players
+          const connectedPlayers = currentRoom.players.filter(p => !p.disconnected);
+          if (connectedPlayers.length === 0) {
+            gameRooms.delete(roomCode);
+            console.log(`Room ${roomCode} deleted (no connected players after grace period)`);
+          } else if (currentRoom.state === 'playing' && connectedPlayers.length === 1) {
+            // Only one player left and game was in progress - end the match
+            console.log(`Room ${roomCode} has only one connected player, match will end on timeout`);
           }
         }, RECONNECT_GRACE_PERIOD);
       }
