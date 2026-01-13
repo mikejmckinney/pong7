@@ -19,6 +19,7 @@ class MultiplayerClient {
     this.onMatchComplete = null;
     this.onRematchRequested = null;
     this.onOpponentDisconnect = null;
+    this.onPlayerReconnected = null;
     this.onConnectionError = null;
   }
   
@@ -173,6 +174,12 @@ class MultiplayerClient {
       console.log('Opponent disconnected');
       if (this.onOpponentDisconnect) this.onOpponentDisconnect();
     });
+    
+    // Player reconnected (opponent came back)
+    this.socket.on('player-reconnected', (data) => {
+      console.log('Player reconnected:', data);
+      if (this.onPlayerReconnected) this.onPlayerReconnected(data);
+    });
   }
   
   // ============================
@@ -193,7 +200,15 @@ class MultiplayerClient {
       this.socket.emit('register', { username }, (response) => {
         if (response.success) {
           this.player = response.player;
-          resolve(response.player);
+          
+          // Handle reconnection to existing game
+          if (response.reconnected) {
+            this.roomCode = response.roomCode;
+            this.playerIndex = response.playerIndex;
+            console.log(`Reconnected to game in room ${response.roomCode} as player ${response.playerIndex}`);
+          }
+          
+          resolve(response);
         } else {
           reject(new Error(response.error));
         }

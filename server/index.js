@@ -34,6 +34,67 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 // Grace period for reconnection (30 seconds)
 const RECONNECT_GRACE_PERIOD = 30000;
 
+// Socket event rate limiting configuration
+const SOCKET_RATE_LIMITS = {
+  'paddle-move': { maxEvents: 60, windowMs: 1000 },  // 60 events per second (60fps)
+  'ball-sync': { maxEvents: 60, windowMs: 1000 },    // 60 events per second
+  'score-update': { maxEvents: 10, windowMs: 1000 }, // 10 events per second
+  'register': { maxEvents: 3, windowMs: 10000 },     // 3 registrations per 10s
+  'create-room': { maxEvents: 5, windowMs: 60000 },  // 5 room creates per minute
+  'join-room': { maxEvents: 10, windowMs: 60000 },   // 10 room joins per minute
+  'find-match': { maxEvents: 5, windowMs: 60000 }    // 5 matchmaking attempts per minute
+};
+
+// In-memory rate limit tracking: socketId -> { event -> { count, windowStart } }
+const socketRateLimits = new Map();
+
+/**
+ * Check if a socket event should be rate limited
+ * @param {string} socketId - Socket ID
+ * @param {string} eventName - Event name to check
+ * @returns {boolean} True if the event should be blocked (rate limited)
+ */
+function isRateLimited(socketId, eventName) {
+  const config = SOCKET_RATE_LIMITS[eventName];
+  if (!config) return false; // No rate limit configured for this event
+  
+  const now = Date.now();
+  
+  if (!socketRateLimits.has(socketId)) {
+    socketRateLimits.set(socketId, new Map());
+  }
+  
+  const socketLimits = socketRateLimits.get(socketId);
+  
+  if (!socketLimits.has(eventName)) {
+    socketLimits.set(eventName, { count: 0, windowStart: now });
+  }
+  
+  const limit = socketLimits.get(eventName);
+  
+  // Reset window if expired
+  if (now - limit.windowStart > config.windowMs) {
+    limit.count = 0;
+    limit.windowStart = now;
+  }
+  
+  // Check if over limit
+  if (limit.count >= config.maxEvents) {
+    return true; // Rate limited
+  }
+  
+  limit.count++;
+  return false; // Allowed
+}
+
+/**
+ * Clean up rate limit data for a disconnected socket
+ * @param {string} socketId - Socket ID to clean up
+ */
+function cleanupRateLimits(socketId) {
+  socketRateLimits.delete(socketId);
+}
+
 // Initialize Supabase if credentials provided
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
@@ -89,6 +150,7 @@ const io = new Server(httpServer, {
 const gameRooms = new Map();      // roomCode -> room data
 const matchmakingQueue = [];      // waiting players
 const playerSockets = new Map();  // socketId -> player data
+const pendingReconnects = new Map(); // username -> { roomCode, playerIndex, disconnectTime }
 
 // ============================================
 // REST API ENDPOINTS
@@ -249,6 +311,11 @@ io.on('connection', (socket) => {
   // REGISTRATION
   // ------------------------------
   socket.on('register', async ({ username }, callback) => {
+    // Rate limit check
+    if (isRateLimited(socket.id, 'register')) {
+      return callback({ success: false, error: 'Too many requests. Please wait.' });
+    }
+    
     try {
       // Validate username
       const usernameResult = validateUsername(username);
@@ -304,6 +371,57 @@ io.on('connection', (socket) => {
       // Store in memory
       playerSockets.set(socket.id, player);
 
+      // Check for pending reconnect (player had a game in progress)
+      const reconnectInfo = pendingReconnects.get(sanitized);
+      if (reconnectInfo) {
+        const room = gameRooms.get(reconnectInfo.roomCode);
+        if (room && room.state === 'playing') {
+          const roomPlayer = room.players[reconnectInfo.playerIndex];
+          if (roomPlayer && roomPlayer.disconnected) {
+            // Re-associate player with new socket
+            roomPlayer.socketId = socket.id;
+            roomPlayer.disconnected = false;
+            
+            // Set socket properties
+            socket.join(reconnectInfo.roomCode);
+            socket.roomCode = reconnectInfo.roomCode;
+            socket.playerIndex = reconnectInfo.playerIndex;
+            
+            // Clean up pending reconnect
+            pendingReconnects.delete(sanitized);
+            
+            console.log(`Player ${sanitized} reconnected to room ${reconnectInfo.roomCode}`);
+            
+            // Notify both players that game can resume
+            io.to(reconnectInfo.roomCode).emit('player-reconnected', {
+              playerIndex: reconnectInfo.playerIndex,
+              roomCode: reconnectInfo.roomCode
+            });
+            
+            // Also send current game state to reconnected player
+            callback({ 
+              success: true, 
+              player,
+              reconnected: true,
+              roomCode: reconnectInfo.roomCode,
+              playerIndex: reconnectInfo.playerIndex,
+              gameState: {
+                scores: room.scores,
+                gameMode: room.gameMode,
+                players: room.players.map((p, i) => ({
+                  username: p.username,
+                  displayName: p.display_name,
+                  index: i
+                }))
+              }
+            });
+            return;
+          }
+        }
+        // Invalid reconnect info, clean it up
+        pendingReconnects.delete(sanitized);
+      }
+
       callback({ success: true, player });
     } catch (err) {
       callback({ success: false, error: err.message });
@@ -314,6 +432,11 @@ io.on('connection', (socket) => {
   // ROOM MANAGEMENT
   // ------------------------------
   socket.on('create-room', ({ gameMode }, callback) => {
+    // Rate limit check
+    if (isRateLimited(socket.id, 'create-room')) {
+      return callback({ success: false, error: 'Too many requests. Please wait.' });
+    }
+    
     const player = playerSockets.get(socket.id);
 
     if (!player) {
@@ -350,6 +473,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-room', (roomCode, callback) => {
+    // Rate limit check
+    if (isRateLimited(socket.id, 'join-room')) {
+      return callback({ success: false, error: 'Too many requests. Please wait.' });
+    }
+    
     const player = playerSockets.get(socket.id);
 
     if (!player) {
@@ -407,6 +535,11 @@ io.on('connection', (socket) => {
   // MATCHMAKING
   // ------------------------------
   socket.on('find-match', ({ gameMode }, callback) => {
+    // Rate limit check
+    if (isRateLimited(socket.id, 'find-match')) {
+      return callback({ success: false, error: 'Too many requests. Please wait.' });
+    }
+    
     const player = playerSockets.get(socket.id);
 
     if (!player) {
@@ -519,6 +652,9 @@ io.on('connection', (socket) => {
   // GAME EVENTS
   // ------------------------------
   socket.on('paddle-move', ({ position }) => {
+    // Rate limit high-frequency events silently (no callback to block)
+    if (isRateLimited(socket.id, 'paddle-move')) return;
+    
     if (socket.roomCode) {
       socket.to(socket.roomCode).emit('opponent-move', {
         position,
@@ -528,6 +664,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('ball-sync', (ballState) => {
+    // Rate limit high-frequency events silently
+    if (isRateLimited(socket.id, 'ball-sync')) return;
+    
     // Only player 0 (host) can sync ball state
     if (socket.roomCode && socket.playerIndex === 0) {
       socket.to(socket.roomCode).emit('ball-update', ballState);
@@ -535,6 +674,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('score-update', ({ scores, longestRally }) => {
+    // Rate limit score updates
+    if (isRateLimited(socket.id, 'score-update')) return;
     const room = gameRooms.get(socket.roomCode);
     
     // Only process from host player during active game
@@ -635,6 +776,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
 
+    // Clean up rate limit data
+    cleanupRateLimits(socket.id);
+
     // Remove from matchmaking queue
     const queueIndex = matchmakingQueue.findIndex(p => p.player.socketId === socket.id);
     if (queueIndex !== -1) {
@@ -645,18 +789,53 @@ io.on('connection', (socket) => {
     if (socket.roomCode) {
       const room = gameRooms.get(socket.roomCode);
       if (room) {
+        // Find the disconnecting player
+        const player = playerSockets.get(socket.id);
+        const playerIndex = socket.playerIndex;
+        
+        if (player && room.state === 'playing') {
+          // Mark player as disconnected instead of removing
+          const roomPlayer = room.players[playerIndex];
+          if (roomPlayer) {
+            roomPlayer.disconnected = true;
+            roomPlayer.socketId = null; // Clear old socket
+          }
+          
+          // Store reconnect info by username
+          pendingReconnects.set(player.username, {
+            roomCode: socket.roomCode,
+            playerIndex: playerIndex,
+            disconnectTime: Date.now()
+          });
+          
+          console.log(`Player ${player.username} disconnected from room ${socket.roomCode}, allowing reconnect`);
+        }
+        
         // Notify opponent
         socket.to(socket.roomCode).emit('opponent-disconnected');
         
-        // Capture roomCode for closure
+        // Capture roomCode and username for closure
         const roomCode = socket.roomCode;
+        const username = player ? player.username : null;
         
         // Set grace period before cleanup
         setTimeout(() => {
           const currentRoom = gameRooms.get(roomCode);
           if (currentRoom) {
-            console.log(`Grace period expired for room ${roomCode}, cleaning up`);
-            gameRooms.delete(roomCode);
+            // Check if player reconnected
+            const reconnectInfo = username ? pendingReconnects.get(username) : null;
+            if (reconnectInfo && reconnectInfo.roomCode === roomCode) {
+              // Player never reconnected, clean up
+              pendingReconnects.delete(username);
+              console.log(`Grace period expired for ${username} in room ${roomCode}, cleaning up`);
+            }
+            
+            // Clean up room if no connected players
+            const connectedPlayers = currentRoom.players.filter(p => !p.disconnected);
+            if (connectedPlayers.length === 0) {
+              gameRooms.delete(roomCode);
+              console.log(`Room ${roomCode} deleted (no connected players after grace period)`);
+            }
           }
         }, RECONNECT_GRACE_PERIOD);
       }

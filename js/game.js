@@ -897,10 +897,11 @@ class Game {
   // ONLINE MULTIPLAYER METHODS
   // ==========================================
 
-  // Username validation constants (match server-side validation)
+  // Validation constants (match server-side validation)
   static USERNAME_MIN_LENGTH = 3;
   static USERNAME_MAX_LENGTH = 20;
   static USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
+  static ROOM_CODE_LENGTH = 6;
 
   /**
    * Validate username
@@ -980,7 +981,15 @@ class Game {
       
       // Register with username
       const username = Storage.getUsername();
-      await this.multiplayer.register(username);
+      const registerResult = await this.multiplayer.register(username);
+      
+      // Check if we reconnected to an existing game
+      if (registerResult.reconnected && registerResult.gameState) {
+        console.log('Reconnecting to game in progress...');
+        // Restore game state and continue playing
+        this.handleReconnection(registerResult);
+        return;
+      }
       
       // Show online lobby
       Screens.showOnlineLobby();
@@ -1046,6 +1055,67 @@ class Game {
       this.resetGame();
       Screens.showError('Connection lost. Please reconnect.', 'menu');
     };
+    
+    // Player reconnected (opponent came back)
+    this.multiplayer.onPlayerReconnected = (_data) => {
+      console.log('Opponent reconnected to the game');
+      // Resume the game if we were waiting
+      if (this.state === 'paused' || this.state === 'menu') {
+        // Could show a notification that opponent is back
+        // For now, just continue - the game state is preserved
+      }
+    };
+  }
+
+  /**
+   * Handle reconnection to a game in progress
+   * @param {Object} data - Reconnection data from server
+   */
+  handleReconnection(data) {
+    console.log('Handling reconnection:', data);
+    
+    this.mode = 'online';
+    this.variant = data.gameState.gameMode || 'classic';
+    
+    // Don't reset game - restore state
+    this.scores = data.gameState.scores || [0, 0];
+    
+    // Set win score based on variant
+    if (this.variant === 'chaos') {
+      this.winScore = 7;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
+    } else if (this.variant === 'speedrun') {
+      this.winScore = 5;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED * 1.5;
+    } else {
+      this.winScore = CONFIG.GAME.WIN_SCORE;
+      this.baseBallSpeed = CONFIG.GAME.BALL_SPEED;
+    }
+    
+    // Initialize game objects
+    this.initGameObjects();
+    
+    // Set initial opponent paddle position
+    this.opponentTargetY = this.paddle2.y + this.paddle2.height / 2;
+    this.opponentPaddleY = this.opponentTargetY;
+    
+    // Hide menu overlay
+    Screens.hide();
+    
+    // Start playing immediately (no countdown for reconnection)
+    this.state = 'playing';
+    Physics.resetBall(this.ball, this.canvas, null);
+    this.ball.speed = this.baseBallSpeed;
+    
+    // Enable touch prevention
+    enableGameplayTouchPrevention(this.canvas);
+    
+    // Start power-ups for chaos mode
+    if (this.variant === 'chaos') {
+      this.powerups.startSpawns(this.canvas);
+    }
+    
+    console.log('Game reconnected and resumed');
   }
 
   /**
@@ -1098,8 +1168,8 @@ class Game {
     const input = document.getElementById('room-code-input');
     const roomCode = input ? input.value.trim().toUpperCase() : '';
     
-    if (roomCode.length !== 6) {
-      Screens.showError('Room code must be 6 characters', 'joinRoom');
+    if (roomCode.length !== Game.ROOM_CODE_LENGTH) {
+      Screens.showError(`Room code must be ${Game.ROOM_CODE_LENGTH} characters`, 'joinRoom');
       return;
     }
     
