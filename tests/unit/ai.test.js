@@ -57,6 +57,9 @@ describe('AI', () => {
       
       expect(ai.difficulty).toBe('medium');
       expect(ai.reactionDelay).toBe(CONFIG.AI.MEDIUM.reactionDelay);
+      expect(ai.mistakeChance).toBe(CONFIG.AI.MEDIUM.mistakeChance);
+      expect(ai.maxSpeedMultiplier).toBe(CONFIG.AI.MEDIUM.maxSpeedMultiplier);
+      expect(ai.predictionError).toBe(CONFIG.AI.MEDIUM.predictionError);
     });
 
     test('sets hard difficulty with correct settings', () => {
@@ -65,6 +68,9 @@ describe('AI', () => {
       
       expect(ai.difficulty).toBe('hard');
       expect(ai.reactionDelay).toBe(CONFIG.AI.HARD.reactionDelay);
+      expect(ai.mistakeChance).toBe(CONFIG.AI.HARD.mistakeChance);
+      expect(ai.maxSpeedMultiplier).toBe(CONFIG.AI.HARD.maxSpeedMultiplier);
+      expect(ai.predictionError).toBe(CONFIG.AI.HARD.predictionError);
     });
 
     test('sets impossible difficulty with correct settings', () => {
@@ -73,6 +79,9 @@ describe('AI', () => {
       
       expect(ai.difficulty).toBe('impossible');
       expect(ai.reactionDelay).toBe(CONFIG.AI.IMPOSSIBLE.reactionDelay);
+      expect(ai.mistakeChance).toBe(CONFIG.AI.IMPOSSIBLE.mistakeChance);
+      expect(ai.maxSpeedMultiplier).toBe(CONFIG.AI.IMPOSSIBLE.maxSpeedMultiplier);
+      expect(ai.predictionError).toBe(CONFIG.AI.IMPOSSIBLE.predictionError);
     });
 
     test('handles case-insensitive difficulty', () => {
@@ -94,13 +103,14 @@ describe('AI', () => {
 
   describe('update', () => {
     let ai;
+    let performanceNowSpy;
     const canvas = { width: 800, height: 600 };
     const paddle = { x: 780, y: 270, width: 10, height: 60 };
 
     beforeEach(() => {
       ai = new AI('medium');
-      // Reset performance.now mock
-      jest.spyOn(performance, 'now').mockReturnValue(0);
+      // Create spy once in beforeEach, then modify return value in tests
+      performanceNowSpy = jest.spyOn(performance, 'now').mockReturnValue(0);
     });
 
     afterEach(() => {
@@ -115,14 +125,31 @@ describe('AI', () => {
       expect(targetY).toBe(300); // canvas.height / 2
     });
 
+    test('does not update target when reaction delay has not elapsed', () => {
+      const ball = { x: 100, y: 200, vx: 5, vy: 0, radius: 5, speed: 5 };
+      
+      // First call at time 0
+      ai.update(ball, paddle, canvas);
+      const initialTargetY = ai.targetY;
+      
+      // Advance time but NOT past reaction delay
+      performanceNowSpy.mockReturnValue(ai.reactionDelay - 1);
+      
+      // Second call should NOT update targetY
+      ai.update(ball, paddle, canvas);
+      
+      // Target should remain unchanged (still the initial value)
+      expect(ai.targetY).toBe(initialTargetY);
+    });
+
     test('updates target when reaction delay elapsed', () => {
       const ball = { x: 100, y: 200, vx: 5, vy: 0, radius: 5, speed: 5 };
       
       // First call
       ai.update(ball, paddle, canvas);
       
-      // Advance time past reaction delay
-      jest.spyOn(performance, 'now').mockReturnValue(ai.reactionDelay + 1);
+      // Advance time past reaction delay using the spy reference
+      performanceNowSpy.mockReturnValue(ai.reactionDelay + 1);
       
       ai.update(ball, paddle, canvas);
       
@@ -135,7 +162,8 @@ describe('AI', () => {
       // Force mistake to trigger
       jest.spyOn(Math, 'random').mockReturnValue(0);
       
-      jest.spyOn(performance, 'now').mockReturnValue(ai.reactionDelay + 1);
+      // Use the spy reference instead of creating a new one
+      performanceNowSpy.mockReturnValue(ai.reactionDelay + 1);
       ai.update(ball, paddle, canvas);
       
       // With Math.random returning 0, which is less than mistakeChance (0.05 for medium),
