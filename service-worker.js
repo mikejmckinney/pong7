@@ -4,24 +4,26 @@
  */
 
 const CACHE_NAME = 'pong-v1';
+
+// Use relative paths to support deployment in subdirectories (e.g., GitHub Pages)
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/css/main.css',
-  '/css/animations.css',
-  '/css/responsive.css',
-  '/js/config.js',
-  '/js/utils.js',
-  '/js/audio.js',
-  '/js/controls.js',
-  '/js/physics.js',
-  '/js/ai.js',
-  '/js/powerups.js',
-  '/js/renderer.js',
-  '/js/storage.js',
-  '/js/screens.js',
-  '/js/game.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './css/main.css',
+  './css/animations.css',
+  './css/responsive.css',
+  './js/config.js',
+  './js/utils.js',
+  './js/audio.js',
+  './js/controls.js',
+  './js/physics.js',
+  './js/ai.js',
+  './js/powerups.js',
+  './js/renderer.js',
+  './js/storage.js',
+  './js/screens.js',
+  './js/game.js',
+  './manifest.json'
   // Note: Font files are loaded from Google Fonts CDN
   // Note: multiplayer.js and leaderboard.js need network when implemented
 ];
@@ -97,7 +99,7 @@ self.addEventListener('fetch', (event) => {
           .catch(() => {
             // Network failed, try to return offline page
             if (event.request.mode === 'navigate') {
-              return caches.match('/index.html');
+              return caches.match('./index.html');
             }
             return null;
           });

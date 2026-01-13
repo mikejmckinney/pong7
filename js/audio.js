@@ -240,12 +240,16 @@ const sound = new SoundManager();
 
 // Initialize audio on first user interaction
 let audioInitialized = false;
+let audioInitializing = false;
 let audioListenersAttached = false;
 
 function initAudio() {
-  if (audioInitialized) {
+  // Prevent re-initialization and concurrent initialization attempts
+  if (audioInitialized || audioInitializing) {
     return;
   }
+
+  audioInitializing = true;
 
   try {
     sound.init();
@@ -260,6 +264,8 @@ function initAudio() {
     }
   } catch (err) {
     console.warn('Audio initialization failed:', err);
+  } finally {
+    audioInitializing = false;
   }
 }
 

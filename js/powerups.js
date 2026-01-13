@@ -1,7 +1,13 @@
 /**
  * Power-ups module for Pong game
  * Handles power-up spawning, collection, and effects
- * Note: Power-ups are Phase 4 feature - stub implementation for now
+ * 
+ * @description This module provides the infrastructure for power-ups in the game.
+ * Currently contains stub implementations that will be fully developed in Phase 4.
+ * The stub methods maintain the correct interfaces and state management to ensure
+ * seamless integration when power-ups are implemented.
+ * 
+ * @see docs/prompts/README.md for the implementation roadmap
  */
 
 class PowerUpManager {
@@ -13,15 +19,17 @@ class PowerUpManager {
   }
 
   /**
-   * Start spawning power-ups
+   * Start spawning power-ups at random intervals.
+   * @stub This method is a placeholder for Phase 4 implementation.
+   * When implemented, will spawn power-ups at configurable intervals.
    */
   startSpawns() {
-    // Power-ups not yet implemented - stub for future Phase 4
+    // Stub: Power-ups will be implemented in Phase 4
     this.spawnsActive = false;
   }
 
   /**
-   * Stop spawning power-ups
+   * Stop spawning power-ups and clear any pending spawn timers.
    */
   stopSpawns() {
     if (this.spawnTimeoutId !== null) {
@@ -32,11 +40,13 @@ class PowerUpManager {
   }
 
   /**
-   * Spawn a new power-up
-   * @param {Object} _canvas - Canvas dimensions
+   * Spawn a new power-up at a random position on the canvas.
+   * @stub This method is a placeholder for Phase 4 implementation.
+   * When implemented, will create power-ups with random types and positions.
+   * @param {Object} _canvas - Canvas dimensions {width, height}
    */
   spawn(_canvas) {
-    // Stub for Phase 4
+    // Stub: Power-up spawning will be implemented in Phase 4
   }
 
   /**
@@ -62,13 +72,16 @@ class PowerUpManager {
   }
 
   /**
-   * Collect a power-up
-   * @param {Object} _powerup - Power-up object
+   * Collect a power-up and apply its effect to the collecting player.
+   * @stub Effect application is a placeholder for Phase 4 implementation.
+   * When implemented, will apply various effects like paddle size changes,
+   * ball speed modifications, shields, etc.
+   * @param {Object} _powerup - Power-up object containing type and properties
    * @param {number} _player - Player who collected (1 or 2)
    */
   collect(_powerup, _player) {
     sound.powerUpCollect();
-    // Apply effect - stub for Phase 4
+    // Stub: Power-up effects will be implemented in Phase 4
   }
 
   /**

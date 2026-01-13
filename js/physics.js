@@ -44,9 +44,8 @@ const Physics = {
       this.applyBounce(ball, paddle1, 1);
       result.hitPaddle = true;
     }
-
-    // Right paddle (paddle2)
-    if (this.checkPaddleCollision(ball, paddle2)) {
+    // Right paddle (paddle2) - only check if not already hit paddle1
+    else if (this.checkPaddleCollision(ball, paddle2)) {
       ball.x = paddle2.x - ball.radius;
       const hitPos = this.calculateHitPosition(ball, paddle2);
       result.hitPosition = hitPos;
