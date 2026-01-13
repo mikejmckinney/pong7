@@ -117,10 +117,10 @@ npm run lint
 - [x] Phase 4: Power-ups and special game modes
 - [x] Phase 5: Local multiplayer (same device)
 - [ ] Phase 6: Database setup (Supabase)
-- [ ] Phase 7: Backend deployment (Railway)
-- [ ] Phase 8: Online multiplayer integration
+- [x] Phase 7: Backend server (Node.js + Socket.io) ✅ Code complete
+- [x] Phase 8: Online multiplayer integration ✅ Code complete
 - [ ] Phase 9: Frontend deployment (GitHub Pages)
-- [ ] Phase 10: Testing, bug fixes, polish
+- [x] Phase 10: Testing, bug fixes, polish ✅ 185 tests passing
 
 ## 🎯 Game Specifications
 
@@ -161,7 +161,7 @@ Run all tests:
 npm test
 ```
 
-Current test status: **113 tests passing**
+Current test status: **185 tests passing** (113 frontend + 72 backend)
 
 ## 🎨 Design Preview
 
