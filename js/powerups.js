@@ -91,6 +91,9 @@ const POWERUP_TYPES = {
 // Array of power-up type keys for random selection
 const POWERUP_TYPE_KEYS = Object.keys(POWERUP_TYPES);
 
+// Name-to-configuration lookup map for O(1) access
+const POWERUP_TYPES_BY_NAME = Object.fromEntries(Object.values(POWERUP_TYPES).map(type => [type.name, type]));
+
 class PowerUpManager {
   constructor() {
     this.active = [];
@@ -313,8 +316,8 @@ class PowerUpManager {
   collect(powerup, player) {
     sound.powerUpCollect();
 
-    // Find the power-up type configuration
-    const typeConfig = Object.values(POWERUP_TYPES).find(t => t.name === powerup.type);
+    // Find the power-up type configuration (O(1) lookup)
+    const typeConfig = POWERUP_TYPES_BY_NAME[powerup.type];
     if (!typeConfig) {
       return;
     }
@@ -427,7 +430,7 @@ class PowerUpManager {
     let y2 = 80; // Start position for player 2 effects
 
     for (const effect of this.effects) {
-      const typeConfig = Object.values(POWERUP_TYPES).find(t => t.name === effect.type);
+      const typeConfig = POWERUP_TYPES_BY_NAME[effect.type];
       if (!typeConfig) continue;
 
       // Calculate remaining time

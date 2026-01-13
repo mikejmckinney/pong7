@@ -23,7 +23,7 @@ global.Renderer = {
 };
 
 // Load PowerUpManager module
-const { PowerUpManager, POWERUP_TYPES, POWERUP_TYPE_KEYS } = require(path.join(__dirname, '../../js/powerups.js'));
+const { PowerUpManager, POWERUP_TYPES } = require(path.join(__dirname, '../../js/powerups.js'));
 
 describe('PowerUpManager', () => {
   let manager;

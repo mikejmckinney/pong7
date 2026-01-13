@@ -409,6 +409,8 @@ class Game {
     setTimeout(() => {
       if (this.state === 'playing') {
         Physics.resetBall(this.ball, this.canvas, scorer === 1 ? 1 : -1);
+        // Restore variant-specific ball speed (Physics.resetBall uses default speed)
+        this.ball.speed = this.baseBallSpeed;
         this.ballTrail = [];
       }
     }, CONFIG.GAME.SCORE_PAUSE_DURATION);
@@ -500,6 +502,8 @@ class Game {
       if (elapsed >= CONFIG.GAME.COUNTDOWN_DURATION) {
         this.state = 'playing';
         Physics.resetBall(this.ball, this.canvas, null);
+        // Restore variant-specific ball speed (Physics.resetBall uses default speed)
+        this.ball.speed = this.baseBallSpeed;
       }
       return;
     }
@@ -533,8 +537,20 @@ class Game {
     // Apply power-up paddle size modifiers
     const p1Multiplier = this.powerups.getPaddleSizeMultiplier(1);
     const p2Multiplier = this.powerups.getPaddleSizeMultiplier(2);
+
+    // Preserve paddle centers when height changes
+    const p1CenterY = this.paddle1.y + this.paddle1.height / 2;
+    const p2CenterY = this.paddle2.y + this.paddle2.height / 2;
+
     this.paddle1.height = this.basePaddleHeight * p1Multiplier;
     this.paddle2.height = this.basePaddleHeight * p2Multiplier;
+
+    // Reposition paddles so their centers stay fixed and clamp to canvas bounds
+    this.paddle1.y = p1CenterY - this.paddle1.height / 2;
+    this.paddle2.y = p2CenterY - this.paddle2.height / 2;
+
+    this.paddle1.y = Math.max(0, Math.min(this.paddle1.y, this.canvas.height - this.paddle1.height));
+    this.paddle2.y = Math.max(0, Math.min(this.paddle2.y, this.canvas.height - this.paddle2.height));
 
     // Check for reversed controls
     const p1Reversed = this.powerups.isReversed(1);
@@ -592,16 +608,18 @@ class Game {
       this.ballTrail.shift();
     }
 
-    // Apply curve effect if active
+    // Apply curve effect if active (cap vertical velocity to prevent extreme values)
     if (this.powerups.modifiers.curveAmount !== 0) {
       this.ball.vy += this.powerups.modifiers.curveAmount;
+      // Cap vertical velocity to prevent uncontrolled behavior
+      const maxVy = this.ball.speed * 1.5;
+      this.ball.vy = Utils.clamp(this.ball.vy, -maxVy, maxVy);
     }
 
     // Temporarily modify ball velocity for speed effects
-    const originalVx = this.ball.vx;
-    const originalVy = this.ball.vy;
-    this.ball.vx *= speedMultiplier * gameSpeedMultiplier;
-    this.ball.vy *= speedMultiplier * gameSpeedMultiplier;
+    const totalMultiplier = speedMultiplier * gameSpeedMultiplier;
+    this.ball.vx *= totalMultiplier;
+    this.ball.vy *= totalMultiplier;
 
     // Update ball physics
     const result = Physics.updateBall(
@@ -611,16 +629,25 @@ class Game {
       this.canvas
     );
 
-    // Restore original velocities (adjusted for any bounces)
-    const vxRatio = originalVx !== 0 ? this.ball.vx / (originalVx * speedMultiplier * gameSpeedMultiplier) : 1;
-    const vyRatio = originalVy !== 0 ? this.ball.vy / (originalVy * speedMultiplier * gameSpeedMultiplier) : 1;
-    this.ball.vx = originalVx * vxRatio;
-    this.ball.vy = originalVy * vyRatio;
+    // Restore velocity - only revert speed multiplication if no paddle bounce occurred.
+    // If a paddle was hit, the physics engine has already set a new correct velocity.
+    if (!result.hitPaddle && totalMultiplier !== 1) {
+      this.ball.vx /= totalMultiplier;
+      this.ball.vy /= totalMultiplier;
+    }
 
     // Handle collisions
     if (result.hitPaddle) {
-      sound.paddleHit(result.hitPosition);
-      this.createHitParticles();
+      // Check if fireball is active - ball passes through paddle once
+      if (this.powerups.useFireball()) {
+        // Fireball used - reverse the bounce that just happened
+        // The ball should continue through the paddle
+        this.ball.vx = -this.ball.vx;
+        sound.wallBounce(); // Different sound for fireball pass-through
+      } else {
+        sound.paddleHit(result.hitPosition);
+        this.createHitParticles();
+      }
     }
 
     if (result.hitWall) {
