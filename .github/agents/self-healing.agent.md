@@ -67,7 +67,7 @@ gh run download <run-id> --name <artifact-name>
 
 # Common artifact names:
 # - lint-logs
-# - unit-test-logs  
+# - unit-test-logs
 # - integration-test-logs
 # - e2e-test-results
 # - build-output
