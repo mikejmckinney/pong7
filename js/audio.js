@@ -272,8 +272,13 @@ function initAudio() {
 }
 
 // Attach listeners for first user interaction
-if (!audioListenersAttached) {
+if (typeof document !== 'undefined' && !audioListenersAttached) {
   document.addEventListener('touchstart', initAudio);
   document.addEventListener('click', initAudio);
   audioListenersAttached = true;
+}
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { SoundManager, sound, initAudio };
 }

@@ -145,19 +145,48 @@ class Game {
    * Setup pause button for mobile devices
    */
   setupPauseButton() {
-    if (this.pauseBtn) {
-      this.pauseBtn.addEventListener('click', (e) => {
+    if (!this.pauseBtn) {
+      return;
+    }
+
+    // Create and cache handler functions so they can be removed later
+    if (!this._pauseClickHandler) {
+      this._pauseClickHandler = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (this.state === 'playing') {
           this.pause();
         }
-      });
-      
+      };
+    }
+
+    if (!this._pauseTouchStartHandler) {
       // Prevent touch events from interfering with game controls
-      this.pauseBtn.addEventListener('touchstart', (e) => {
+      this._pauseTouchStartHandler = (e) => {
         e.stopPropagation();
-      });
+      };
+    }
+
+    this.pauseBtn.addEventListener('click', this._pauseClickHandler);
+    this.pauseBtn.addEventListener('touchstart', this._pauseTouchStartHandler);
+  }
+
+  /**
+   * Cleanup pause button event listeners
+   */
+  cleanupPauseButton() {
+    if (!this.pauseBtn) {
+      return;
+    }
+
+    if (this._pauseClickHandler) {
+      this.pauseBtn.removeEventListener('click', this._pauseClickHandler);
+      this._pauseClickHandler = null;
+    }
+
+    if (this._pauseTouchStartHandler) {
+      this.pauseBtn.removeEventListener('touchstart', this._pauseTouchStartHandler);
+      this._pauseTouchStartHandler = null;
     }
   }
 
@@ -691,7 +720,17 @@ class Game {
     this.ball.vx = this.targetBallState.vx;
     this.ball.vy = this.targetBallState.vy;
 
-    // Add current position to trail (same as updateBall does)
+    // Update ball trail
+    this._updateBallTrail();
+  }
+
+  /**
+   * Update the ball trail array (shared by updateBall and updateGuestBall)
+   * @private
+   */
+  _updateBallTrail() {
+    if (!this.ball) return;
+    
     this.ballTrail.push({ x: this.ball.x, y: this.ball.y });
     if (this.ballTrail.length > CONFIG.VISUALS.TRAIL_LENGTH) {
       this.ballTrail.shift();
@@ -812,11 +851,8 @@ class Game {
     const speedMultiplier = this.powerups.modifiers.ballSpeedMultiplier;
     const gameSpeedMultiplier = this.powerups.modifiers.gameSpeedMultiplier;
 
-    // Add current position to trail
-    this.ballTrail.push({ x: this.ball.x, y: this.ball.y });
-    if (this.ballTrail.length > CONFIG.VISUALS.TRAIL_LENGTH) {
-      this.ballTrail.shift();
-    }
+    // Update ball trail
+    this._updateBallTrail();
 
     // Apply curve effect if active (cap vertical velocity to prevent extreme values)
     if (this.powerups.modifiers.curveAmount !== 0) {
@@ -1206,6 +1242,9 @@ class Game {
     
     // Hide menu overlay
     Screens.hide();
+    
+    // Show pause button for mobile users (same as startOnlineGame)
+    this.setPauseButtonVisible(true);
     
     // Start playing immediately (no countdown for reconnection)
     this.state = 'playing';

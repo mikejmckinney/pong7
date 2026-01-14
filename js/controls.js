@@ -318,3 +318,8 @@ function disableGameplayTouchPrevention(canvas) {
     currentCanvas = null;
   }
 }
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Controls;
+}
