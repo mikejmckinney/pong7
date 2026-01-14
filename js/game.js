@@ -9,6 +9,7 @@ class Game {
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
     this.overlay = document.getElementById('ui-overlay');
+    this.pauseBtn = document.getElementById('pause-btn');
 
     // Game state
     this.state = 'menu'; // menu, countdown, playing, paused, gameover
@@ -63,6 +64,9 @@ class Game {
 
     // Setup keyboard shortcuts
     this.setupKeyboardShortcuts();
+
+    // Setup pause button for mobile
+    this.setupPauseButton();
 
     // Load settings
     this.loadSettings();
@@ -138,6 +142,40 @@ class Game {
   }
 
   /**
+   * Setup pause button for mobile devices
+   */
+  setupPauseButton() {
+    if (this.pauseBtn) {
+      this.pauseBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.state === 'playing') {
+          this.pause();
+        }
+      });
+      
+      // Prevent touch events from interfering with game controls
+      this.pauseBtn.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+      });
+    }
+  }
+
+  /**
+   * Show or hide the pause button based on game state
+   * @param {boolean} show - Whether to show the button
+   */
+  setPauseButtonVisible(show) {
+    if (this.pauseBtn) {
+      if (show) {
+        this.pauseBtn.classList.remove('hidden');
+      } else {
+        this.pauseBtn.classList.add('hidden');
+      }
+    }
+  }
+
+  /**
    * Load settings from storage
    */
   loadSettings() {
@@ -156,6 +194,7 @@ class Game {
    */
   showMainMenu() {
     this.state = 'menu';
+    this.setPauseButtonVisible(false);
     Screens.showMainMenu();
   }
 
@@ -340,6 +379,9 @@ class Game {
     // Hide menu overlay
     Screens.hide();
 
+    // Show pause button for mobile users
+    this.setPauseButtonVisible(true);
+
     // Start countdown
     this.startCountdown();
 
@@ -431,6 +473,7 @@ class Game {
 
     this.previousState = this.state;
     this.state = 'paused';
+    this.setPauseButtonVisible(false);
     Screens.showPauseMenu();
   }
 
@@ -444,6 +487,7 @@ class Game {
 
     this.state = this.previousState || 'playing';
     this.previousState = null;
+    this.setPauseButtonVisible(true);
     Screens.hide();
   }
 
@@ -532,6 +576,9 @@ class Game {
    */
   gameOver(winner) {
     this.state = 'gameover';
+
+    // Hide pause button
+    this.setPauseButtonVisible(false);
 
     // Play victory sound
     sound.gameOver();
@@ -1087,6 +1134,9 @@ class Game {
       const opponentScoreIndex = 1 - myScoreIndex; // 1v1 game: opponent is always the other player
       Storage.updateStats(isWinner, data.scores[myScoreIndex], data.scores[opponentScoreIndex]);
       
+      // Hide pause button
+      this.setPauseButtonVisible(false);
+      
       Screens.showOnlineGameOver(data.winnerIndex, data.scores, this.multiplayer.playerIndex);
       disableGameplayTouchPrevention(this.canvas);
     };
@@ -1274,6 +1324,9 @@ class Game {
     
     // Hide menu overlay
     Screens.hide();
+    
+    // Show pause button for mobile users
+    this.setPauseButtonVisible(true);
     
     // Start countdown
     this.startCountdown();
