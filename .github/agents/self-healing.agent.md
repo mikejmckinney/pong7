@@ -1,3 +1,15 @@
+---
+name: Self-Healing CI
+description: Agent that detects, diagnoses, and fixes CI/CD pipeline failures. Ensures no task is marked complete until all tests pass.
+tools: ['bash', 'edit', 'view', 'grep', 'glob', 'github-mcp-server-actions_list', 'github-mcp-server-actions_get', 'github-mcp-server-get_job_logs']
+handoffs:
+  - label: Continue Implementation
+    agent: agent
+    prompt: >
+      CI is now passing. Continue with the original implementation task.
+    send: false
+---
+
 # Self-Healing CI Agent
 
 ## Purpose
