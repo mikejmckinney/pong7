@@ -298,13 +298,17 @@ const Screens = {
     const rows = entries.map((entry, index) => {
       const formatted = Leaderboard.formatEntry(entry, index + 1);
       const rankClass = index < 3 ? `rank-${index + 1}` : '';
+      // Format win percentage to 1 decimal place
+      const winPct = typeof formatted.winPercentage === 'number' 
+        ? formatted.winPercentage.toFixed(1) 
+        : formatted.winPercentage;
       return `
         <tr class="leaderboard-row ${rankClass}">
           <td class="rank">${formatted.rank}</td>
           <td class="username">${this.sanitizeHTML(formatted.username)}</td>
           <td class="elo">${formatted.elo}</td>
           <td class="wins">${formatted.gamesWon}</td>
-          <td class="winrate">${formatted.winPercentage}%</td>
+          <td class="winrate">${winPct}%</td>
         </tr>
       `;
     }).join('');
