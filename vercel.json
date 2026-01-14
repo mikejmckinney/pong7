@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "if echo \"$VERCEL_GIT_COMMIT_MESSAGE\" | grep -q \"\\[WIP\\]\"; then exit 0; else git diff --quiet HEAD^ HEAD -- css/ js/ index.html manifest.json; fi",   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "if echo \"$VERCEL_GIT_COMMIT_MESSAGE\" | grep -q \"\\[WIP\\]\"; then exit 0; else git diff --quiet HEAD^ HEAD -- assets/ css/ js/ index.html manifest.json; fi",   "$schema": "https://openapi.vercel.sh/vercel.json",
   "name": "pong7",
   "version": 2,
   "public": true,
