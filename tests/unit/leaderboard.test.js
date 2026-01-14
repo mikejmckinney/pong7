@@ -131,6 +131,7 @@ describe('Leaderboard', () => {
       const mockClient = {
         from: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
         limit: jest.fn().mockResolvedValue({ data: mockData, error: null })
       };
 
@@ -142,6 +143,7 @@ describe('Leaderboard', () => {
 
       expect(mockClient.from).toHaveBeenCalledWith('leaderboard');
       expect(mockClient.select).toHaveBeenCalledWith('*');
+      expect(mockClient.order).toHaveBeenCalledWith('elo_rating', { ascending: false });
       expect(mockClient.limit).toHaveBeenCalledWith(50);
       expect(result.data).toEqual(mockData);
       expect(result.error).toBeNull();

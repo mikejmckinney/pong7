@@ -48,6 +48,7 @@ const Leaderboard = {
       const { data, error } = await this.supabase
         .from('leaderboard')
         .select('*')
+        .order('elo_rating', { ascending: false })
         .limit(limit);
       
       if (error) {
