@@ -3,7 +3,7 @@
  * Enables offline single-player mode via caching
  */
 
-const CACHE_NAME = 'pong-v1';
+const CACHE_NAME = 'pong-v2';
 
 // Use relative paths to support deployment in subdirectories (e.g., GitHub Pages)
 const ASSETS = [
@@ -21,11 +21,13 @@ const ASSETS = [
   './js/powerups.js',
   './js/renderer.js',
   './js/storage.js',
+  './js/leaderboard.js',
   './js/screens.js',
   './js/game.js',
   './manifest.json'
   // Note: Font files are loaded from Google Fonts CDN
-  // Note: multiplayer.js and leaderboard.js need network when implemented
+  // Note: multiplayer.js needs network for online play
+  // Note: leaderboard.js caches locally, fetches online data when network available
 ];
 
 // Install event - cache assets

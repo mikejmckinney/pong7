@@ -29,6 +29,7 @@ module.exports = {
     sound: 'readonly',
     Renderer: 'readonly',
     Storage: 'readonly',
+    Leaderboard: 'readonly',
     Screens: 'readonly',
     PowerUpManager: 'readonly',
     Game: 'readonly',
@@ -38,6 +39,8 @@ module.exports = {
     disableGameplayTouchPrevention: 'readonly',
     // Socket.io client (loaded from CDN)
     io: 'readonly',
+    // Supabase client (loaded from CDN)
+    supabase: 'readonly',
     // Multiplayer client class
     MultiplayerClient: 'readonly'
   }

@@ -563,3 +563,143 @@ button:focus-visible {
   background: rgba(255, 0, 255, 0.1);
   box-shadow: 0 0 15px var(--neon-pink);
 }
+
+/* Leaderboard Tabs */
+.leaderboard-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  justify-content: center;
+}
+
+.tab-btn {
+  background: transparent;
+  border: 2px solid var(--text-secondary);
+  color: var(--text-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: 'Press Start 2P', cursive;
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.tab-btn.active {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  background: rgba(0, 255, 255, 0.1);
+}
+
+.tab-btn:hover:not(.active) {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+/* Leaderboard Content */
+.leaderboard-content {
+  max-height: 300px;
+  overflow-y: auto;
+  width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-cyan) var(--bg-secondary);
+}
+
+.leaderboard-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.leaderboard-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.leaderboard-content::-webkit-scrollbar-thumb {
+  background: var(--neon-cyan);
+  border-radius: 4px;
+}
+
+/* Global Leaderboard Table */
+.global-leaderboard {
+  width: 100%;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 0.5rem;
+}
+
+.leaderboard-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+}
+
+.leaderboard-table th {
+  color: var(--neon-cyan);
+  padding: var(--spacing-xs);
+  text-align: left;
+  border-bottom: 2px solid var(--neon-cyan);
+}
+
+.leaderboard-table td {
+  color: var(--text-primary);
+  padding: var(--spacing-xs);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-row:hover {
+  background: rgba(0, 255, 255, 0.05);
+}
+
+/* Top 3 Rankings */
+.leaderboard-row.rank-1 .rank,
+.leaderboard-row.rank-1 .username {
+  color: gold;
+  text-shadow: 0 0 10px gold;
+}
+
+.leaderboard-row.rank-2 .rank,
+.leaderboard-row.rank-2 .username {
+  color: silver;
+  text-shadow: 0 0 10px silver;
+}
+
+.leaderboard-row.rank-3 .rank,
+.leaderboard-row.rank-3 .username {
+  color: #cd7f32;
+  text-shadow: 0 0 10px #cd7f32;
+}
+
+/* Leaderboard States */
+.leaderboard-error,
+.leaderboard-empty {
+  text-align: center;
+  padding: var(--spacing-lg);
+}
+
+.error-icon,
+.empty-icon {
+  font-size: 2rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.error-text {
+  color: var(--neon-pink);
+  font-family: 'Press Start 2P', cursive;
+  font-size: 0.7rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.error-detail,
+.empty-detail {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+}
+
+.empty-text {
+  color: var(--neon-cyan);
+  font-family: 'Press Start 2P', cursive;
+  font-size: 0.7rem;
+  margin-bottom: var(--spacing-xs);
+}
