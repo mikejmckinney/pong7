@@ -202,6 +202,10 @@ class Game {
         Screens.showLeaderboard();
         break;
 
+      case 'leaderboardTab':
+        Screens.showLeaderboard(value);
+        break;
+
       case 'howto':
         Screens.showHowToPlay();
         break;

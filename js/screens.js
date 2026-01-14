@@ -194,46 +194,170 @@ const Screens = {
   },
 
   /**
-   * Show leaderboard screen
+   * Show leaderboard screen with tabs
+   * @param {string} [activeTab='local'] - Which tab to show ('local' or 'global')
    */
-  showLeaderboard() {
+  showLeaderboard(activeTab = 'local') {
     this.currentScreen = 'leaderboard';
     const stats = Storage.getLocalStats();
 
     this.overlay.innerHTML = `
       <div class="screen leaderboard-screen" data-testid="leaderboard-screen">
-        <h2 class="subtitle">YOUR STATS</h2>
-        <div class="stats-list">
-          <div class="stat-item">
-            <span class="stat-label">Games Played</span>
-            <span class="stat-value">${stats.gamesPlayed}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Wins</span>
-            <span class="stat-value">${stats.gamesWon}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Losses</span>
-            <span class="stat-value">${stats.gamesLost}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Win Rate</span>
-            <span class="stat-value">${stats.gamesPlayed > 0 ? Math.round(stats.gamesWon / stats.gamesPlayed * 100) : 0}%</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Best Streak</span>
-            <span class="stat-value">${stats.longestWinStreak}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Highest Score</span>
-            <span class="stat-value">${stats.highestScore}</span>
-          </div>
+        <h2 class="subtitle">LEADERBOARD</h2>
+        <div class="leaderboard-tabs">
+          <button class="tab-btn ${activeTab === 'local' ? 'active' : ''}" data-action="leaderboardTab" data-value="local" data-testid="tab-local">YOUR STATS</button>
+          <button class="tab-btn ${activeTab === 'global' ? 'active' : ''}" data-action="leaderboardTab" data-value="global" data-testid="tab-global">GLOBAL</button>
         </div>
-        <p class="online-note">Online leaderboard coming soon!</p>
+        <div class="leaderboard-content" id="leaderboard-content">
+          ${activeTab === 'local' ? this._renderLocalStats(stats) : '<div class="loading-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>'}
+        </div>
         <button class="back-btn" data-action="back" data-testid="back-button">← BACK</button>
       </div>
     `;
     this.attachButtonListeners();
+    
+    // If global tab, fetch and render leaderboard data
+    if (activeTab === 'global') {
+      this._fetchAndRenderGlobalLeaderboard();
+    }
+  },
+
+  /**
+   * Render local stats HTML
+   * @param {Object} stats - Local stats from Storage
+   * @returns {string} HTML string
+   * @private
+   */
+  _renderLocalStats(stats) {
+    return `
+      <div class="stats-list">
+        <div class="stat-item">
+          <span class="stat-label">Games Played</span>
+          <span class="stat-value">${stats.gamesPlayed}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Wins</span>
+          <span class="stat-value">${stats.gamesWon}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Losses</span>
+          <span class="stat-value">${stats.gamesLost}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Win Rate</span>
+          <span class="stat-value">${stats.gamesPlayed > 0 ? Math.round(stats.gamesWon / stats.gamesPlayed * 100) : 0}%</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Best Streak</span>
+          <span class="stat-value">${stats.longestWinStreak}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Highest Score</span>
+          <span class="stat-value">${stats.highestScore}</span>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Fetch and render global leaderboard
+   * @private
+   */
+  async _fetchAndRenderGlobalLeaderboard() {
+    const contentEl = document.getElementById('leaderboard-content');
+    if (!contentEl) return;
+    
+    // Check if Leaderboard module is available
+    if (typeof Leaderboard === 'undefined') {
+      contentEl.innerHTML = this._renderGlobalError('Leaderboard module not loaded');
+      return;
+    }
+    
+    const { data, error } = await Leaderboard.getGlobalLeaderboard(50);
+    
+    if (error) {
+      contentEl.innerHTML = this._renderGlobalError(error);
+      return;
+    }
+    
+    if (!data || data.length === 0) {
+      contentEl.innerHTML = this._renderGlobalEmpty();
+      return;
+    }
+    
+    contentEl.innerHTML = this._renderGlobalLeaderboard(data);
+  },
+
+  /**
+   * Render global leaderboard HTML
+   * @param {Array} entries - Leaderboard entries from Supabase
+   * @returns {string} HTML string
+   * @private
+   */
+  _renderGlobalLeaderboard(entries) {
+    const rows = entries.map((entry, index) => {
+      const formatted = Leaderboard.formatEntry(entry, index + 1);
+      const rankClass = index < 3 ? `rank-${index + 1}` : '';
+      return `
+        <tr class="leaderboard-row ${rankClass}">
+          <td class="rank">${formatted.rank}</td>
+          <td class="username">${this.sanitizeHTML(formatted.username)}</td>
+          <td class="elo">${formatted.elo}</td>
+          <td class="wins">${formatted.gamesWon}</td>
+          <td class="winrate">${formatted.winPercentage}%</td>
+        </tr>
+      `;
+    }).join('');
+    
+    return `
+      <div class="global-leaderboard">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>PLAYER</th>
+              <th>ELO</th>
+              <th>WINS</th>
+              <th>WIN%</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `;
+  },
+
+  /**
+   * Render error state for global leaderboard
+   * @param {string} errorMsg - Error message
+   * @returns {string} HTML string
+   * @private
+   */
+  _renderGlobalError(errorMsg) {
+    return `
+      <div class="leaderboard-error">
+        <p class="error-icon">⚠</p>
+        <p class="error-text">Unable to load leaderboard</p>
+        <p class="error-detail">${this.sanitizeHTML(errorMsg)}</p>
+      </div>
+    `;
+  },
+
+  /**
+   * Render empty state for global leaderboard
+   * @returns {string} HTML string
+   * @private
+   */
+  _renderGlobalEmpty() {
+    return `
+      <div class="leaderboard-empty">
+        <p class="empty-icon">🏆</p>
+        <p class="empty-text">No players yet!</p>
+        <p class="empty-detail">Play online to join the leaderboard</p>
+      </div>
+    `;
   },
 
   /**
