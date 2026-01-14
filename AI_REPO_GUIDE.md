@@ -11,8 +11,8 @@ This is a **web-based Pong game** repository focused on mobile devices with a re
 - **Database**: PostgreSQL (Supabase)
 - **Audio**: Web Audio API
 - **Deployment**: 
-  - Frontend: GitHub Pages (free)
-  - Backend: Railway (free tier)
+  - Frontend: Vercel (free)
+  - Backend: Render (free tier)
   - Database: Supabase (free tier)
 - **Build Tool**: None (vanilla JavaScript, no build step required)
 - **Test Framework**: Jest (unit/integration), Playwright (E2E)
@@ -86,9 +86,10 @@ The game is **fully playable** with the following features implemented:
 - ✅ Settings and stats persistence
 - ✅ PWA support (service worker)
 
-Not yet implemented:
-- Database/leaderboard (requires Supabase)
-- Production deployment (Railway for backend, GitHub Pages for frontend)
+Production deployment:
+- Frontend: https://pong7.vercel.app
+- Backend: https://pong7.onrender.com
+- Database: Supabase (configured)
 
 ## Quickstart Commands
 
@@ -268,8 +269,8 @@ The `test.sh` script validates repository structure. Required files:
 - **State Management**: Class-based architecture with Game as orchestrator
 
 ### Deployment Strategy
-- **Frontend**: GitHub Pages (static hosting, free)
-- **Backend**: Railway (Node.js hosting, free tier)
+- **Frontend**: Vercel (static hosting, free)
+- **Backend**: Render (Node.js hosting, free tier)
 - **Database**: Supabase (PostgreSQL, free tier)
 
 ## Implementation Phases

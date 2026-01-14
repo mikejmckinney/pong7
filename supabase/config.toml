@@ -3,6 +3,10 @@
 # Link to project: supabase link --project-ref <your-project-ref>
 # Apply migrations: supabase db push
 
+# Replace this placeholder with your actual Supabase project reference
+# or run: supabase link --project-ref <your-project-ref>
+project_id = "sjeyisealyvavzjrdcgf"
+
 [api]
 enabled = true
 port = 54321

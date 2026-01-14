@@ -12,6 +12,10 @@ const CONFIG = {
   
   // Supabase configuration (for direct leaderboard queries)
   // Using Supabase publishable key (recommended over legacy anon key)
+  // NOTE: While publishable keys are designed for client-side use and protected by
+  // Row Level Security (RLS) policies, best practice for production is to load keys
+  // from environment variables at build time (e.g., via Vercel env vars).
+  // This hardcoded key is acceptable when RLS is properly configured.
   SUPABASE_URL: 'https://sjeyisealyvavzjrdcgf.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_Aki6GZiFDw_-O5IA4W073w_1nubPqkU',
 

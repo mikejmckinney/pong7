@@ -11,15 +11,22 @@
 const https = require('https');
 const http = require('http');
 
-// Configuration - uses environment variables with fallbacks matching js/config.js
-// Note: API key is also stored in js/config.js which is required for the frontend
+// Configuration - relies on environment variables to avoid coupling to frontend code
+// For local development, use a .env file or set env vars directly
+// Note: The same key values should be configured in js/config.js for the frontend
 const CONFIG = {
   BACKEND_URL: process.env.BACKEND_URL || 'https://pong7.onrender.com',
   SUPABASE_URL: process.env.SUPABASE_URL || 'https://sjeyisealyvavzjrdcgf.supabase.co',
   // Supabase publishable key - safe to expose (read-only access via RLS)
-  // This matches the key in js/config.js for consistency
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || require('../js/config.js').SUPABASE_ANON_KEY || ''
+  // Must be provided via environment variable for proper decoupling
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || ''
 };
+
+// Warn if SUPABASE_ANON_KEY is not set
+if (!CONFIG.SUPABASE_ANON_KEY) {
+  console.log('\x1b[33m%s\x1b[0m', 'Warning: SUPABASE_ANON_KEY is not set. Supabase connectivity tests may fail.');
+  console.log('\x1b[33m%s\x1b[0m', '  Set via: export SUPABASE_ANON_KEY=your_key_here');
+}
 
 // Colors for terminal output
 const colors = {
@@ -60,6 +67,10 @@ function makeRequest(url, options = {}) {
           headers: res.headers,
           body: data
         });
+      });
+      // Handle response stream errors (e.g., connection closed mid-transfer)
+      res.on('error', (err) => {
+        reject(new Error(`Response stream error: ${err.message}`));
       });
     });
     

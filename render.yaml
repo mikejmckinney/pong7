@@ -16,9 +16,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        sync: false  # Set manually: https://pong7.vercel.app
+        sync: false  # REQUIRED: Set manually in Render dashboard to your deployed frontend origin (e.g. https://pong7.vercel.app)
       - key: SUPABASE_URL
-        sync: false  # Set manually from Supabase dashboard
+        sync: false  # REQUIRED: Set manually in Render dashboard from your Supabase project "API URL" (Project Settings → API)
       - key: SUPABASE_SERVICE_KEY
-        sync: false  # Set manually from Supabase dashboard (secret)
+        sync: false  # REQUIRED: Set manually in Render dashboard from your Supabase "service_role" key (Project Settings → API, keep secret)
     autoDeploy: true
