@@ -1,0 +1,66 @@
+# Keep Backend Server Warm
+#
+# Render's free tier suspends the server after 15 minutes of inactivity.
+# This workflow pings the server every 14 minutes to keep it awake.
+#
+# Schedule: Every 14 minutes during active hours (6 AM - 12 AM UTC)
+# This minimizes cold starts for users while respecting Render's resources.
+
+name: Keep Backend Warm
+
+on:
+  schedule:
+    # Run every 14 minutes during active hours (6 AM - 12 AM UTC)
+    # This keeps the server warm without excessive pings
+    - cron: '*/14 6-23 * * *'
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  ping-backend:
+    name: Ping Backend Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake up backend server
+        run: |
+          echo "🏓 Pinging backend server to keep it warm..."
+          echo "URL: ${{ vars.BACKEND_URL || 'https://pong7.onrender.com' }}"
+          
+          # Make the request with timeout and retry
+          MAX_RETRIES=3
+          RETRY_DELAY=10
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i of $MAX_RETRIES..."
+            
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              --max-time 60 \
+              "${{ vars.BACKEND_URL || 'https://pong7.onrender.com' }}" \
+              2>/dev/null)
+            
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | head -n -1)
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Server is awake!"
+              echo "Response: $BODY"
+              exit 0
+            fi
+            
+            echo "⚠️ Got HTTP $HTTP_CODE, retrying in $RETRY_DELAY seconds..."
+            sleep $RETRY_DELAY
+          done
+          
+          echo "❌ Failed to wake up server after $MAX_RETRIES attempts"
+          exit 1
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "🟢 Backend server is warm and responsive"
+          else
+            echo "🔴 Backend server may be experiencing issues"
+            echo "Check https://dashboard.render.com for server status"
+          fi

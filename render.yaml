@@ -1,0 +1,24 @@
+# Render Blueprint for pong7 backend server
+# Deploy with: render blueprint apply
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: pong7-backend
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false  # REQUIRED: Set manually in Render dashboard to your deployed frontend origin (e.g. https://pong7.vercel.app)
+      - key: SUPABASE_URL
+        sync: false  # REQUIRED: Set manually in Render dashboard from your Supabase project "API URL" (Project Settings → API)
+      - key: SUPABASE_SERVICE_KEY
+        sync: false  # REQUIRED: Set manually in Render dashboard from your Supabase "service_role" key (Project Settings → API, keep secret)
+    autoDeploy: true

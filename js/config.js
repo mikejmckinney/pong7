@@ -5,15 +5,19 @@
 
 const CONFIG = {
   // Backend URL - auto-detect based on environment
-  // In production, change this to your Railway URL
+  // Production backend on Render
   BACKEND_URL: (typeof window !== 'undefined' && window.location.hostname === 'localhost')
     ? 'http://localhost:3001'
-    : 'https://pong7-server.up.railway.app',
+    : 'https://pong7.onrender.com',
   
   // Supabase configuration (for direct leaderboard queries)
-  // Set these values after setting up your Supabase project
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  // Using Supabase publishable key (recommended over legacy anon key)
+  // NOTE: While publishable keys are designed for client-side use and protected by
+  // Row Level Security (RLS) policies, best practice for production is to load keys
+  // from environment variables at build time (e.g., via Vercel env vars).
+  // This hardcoded key is acceptable when RLS is properly configured.
+  SUPABASE_URL: 'https://sjeyisealyvavzjrdcgf.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_Aki6GZiFDw_-O5IA4W073w_1nubPqkU',
 
   // Game Settings
   GAME: {
