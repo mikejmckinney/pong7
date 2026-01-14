@@ -158,23 +158,26 @@ class Controls {
     const input = { y: null, direction: 0 };
 
     // Keyboard input (W/S keys)
-    if (this.keys['w'] || this.keys['W']) {
+    // For online mode, also accept arrow keys since player may be used to different controls
+    if (this.keys['w'] || this.keys['W'] || (mode === 'online' && this.keys['ArrowUp'])) {
       input.direction = this.invertControls ? 1 : -1;
-    } else if (this.keys['s'] || this.keys['S']) {
+    } else if (this.keys['s'] || this.keys['S'] || (mode === 'online' && this.keys['ArrowDown'])) {
       input.direction = this.invertControls ? -1 : 1;
     }
 
-    // Touch input - left half of screen
+    // Touch input - left half of screen for local multiplayer, full screen for single/online
     for (const id in this.touches) {
       const touch = this.touches[id];
-      if (touch.relativeX < this.touchZones.left.end) {
+      // In local mode, only use left half of screen; otherwise use full screen
+      const useLeftHalf = mode === 'local';
+      if (!useLeftHalf || touch.relativeX < this.touchZones.left.end) {
         input.y = touch.y * this.sensitivity;
         break;
       }
     }
 
-    // Mouse input (only for single player mode)
-    if (mode === 'single' && this.mouseActive && this.mouseY !== null) {
+    // Mouse input (for single player and online modes, not local multiplayer)
+    if ((mode === 'single' || mode === 'online') && this.mouseActive && this.mouseY !== null) {
       input.y = this.mouseY * this.sensitivity;
     }
 
@@ -314,4 +317,9 @@ function disableGameplayTouchPrevention(canvas) {
     gameplayTouchHandler = null;
     currentCanvas = null;
   }
+}
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Controls;
 }

@@ -9,6 +9,7 @@ class Game {
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
     this.overlay = document.getElementById('ui-overlay');
+    this.pauseBtn = document.getElementById('pause-btn');
 
     // Game state
     this.state = 'menu'; // menu, countdown, playing, paused, gameover
@@ -43,6 +44,8 @@ class Game {
     this.multiplayer = null;
     this.opponentPaddleY = 0;  // For online mode paddle smoothing
     this.opponentTargetY = 0;
+    // Ball sync for guest players (interpolation to reduce jitter)
+    this.targetBallState = null;  // { x, y, vx, vy } - target ball state from host
 
     // Initialize systems
     this.controls = new Controls(this.canvas);
@@ -61,6 +64,9 @@ class Game {
 
     // Setup keyboard shortcuts
     this.setupKeyboardShortcuts();
+
+    // Setup pause button for mobile
+    this.setupPauseButton();
 
     // Load settings
     this.loadSettings();
@@ -136,6 +142,69 @@ class Game {
   }
 
   /**
+   * Setup pause button for mobile devices
+   */
+  setupPauseButton() {
+    if (!this.pauseBtn) {
+      return;
+    }
+
+    // Create and cache handler functions so they can be removed later
+    if (!this._pauseClickHandler) {
+      this._pauseClickHandler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.state === 'playing') {
+          this.pause();
+        }
+      };
+    }
+
+    if (!this._pauseTouchStartHandler) {
+      // Prevent touch events from interfering with game controls
+      this._pauseTouchStartHandler = (e) => {
+        e.stopPropagation();
+      };
+    }
+
+    this.pauseBtn.addEventListener('click', this._pauseClickHandler);
+    this.pauseBtn.addEventListener('touchstart', this._pauseTouchStartHandler);
+  }
+
+  /**
+   * Cleanup pause button event listeners
+   */
+  cleanupPauseButton() {
+    if (!this.pauseBtn) {
+      return;
+    }
+
+    if (this._pauseClickHandler) {
+      this.pauseBtn.removeEventListener('click', this._pauseClickHandler);
+      this._pauseClickHandler = null;
+    }
+
+    if (this._pauseTouchStartHandler) {
+      this.pauseBtn.removeEventListener('touchstart', this._pauseTouchStartHandler);
+      this._pauseTouchStartHandler = null;
+    }
+  }
+
+  /**
+   * Show or hide the pause button based on game state
+   * @param {boolean} show - Whether to show the button
+   */
+  setPauseButtonVisible(show) {
+    if (this.pauseBtn) {
+      if (show) {
+        this.pauseBtn.classList.remove('hidden');
+      } else {
+        this.pauseBtn.classList.add('hidden');
+      }
+    }
+  }
+
+  /**
    * Load settings from storage
    */
   loadSettings() {
@@ -154,6 +223,7 @@ class Game {
    */
   showMainMenu() {
     this.state = 'menu';
+    this.setPauseButtonVisible(false);
     Screens.showMainMenu();
   }
 
@@ -338,6 +408,9 @@ class Game {
     // Hide menu overlay
     Screens.hide();
 
+    // Show pause button for mobile users
+    this.setPauseButtonVisible(true);
+
     // Start countdown
     this.startCountdown();
 
@@ -414,6 +487,7 @@ class Game {
     this.powerups.reset();
     this.ai.reset();
     this.controls.reset();
+    this.targetBallState = null;  // Reset ball sync state for online mode
 
     disableGameplayTouchPrevention(this.canvas);
   }
@@ -428,6 +502,7 @@ class Game {
 
     this.previousState = this.state;
     this.state = 'paused';
+    this.setPauseButtonVisible(false);
     Screens.showPauseMenu();
   }
 
@@ -441,6 +516,7 @@ class Game {
 
     this.state = this.previousState || 'playing';
     this.previousState = null;
+    this.setPauseButtonVisible(true);
     Screens.hide();
   }
 
@@ -530,6 +606,9 @@ class Game {
   gameOver(winner) {
     this.state = 'gameover';
 
+    // Hide pause button
+    this.setPauseButtonVisible(false);
+
     // Play victory sound
     sound.gameOver();
 
@@ -608,7 +687,10 @@ class Game {
     this.updatePaddles();
 
     // Update ball
-    if (this.ball.vx !== 0 || this.ball.vy !== 0) {
+    // For online guest players, interpolate ball position from host instead of running physics locally
+    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isGuest) {
+      this.updateGuestBall();
+    } else if (this.ball.vx !== 0 || this.ball.vy !== 0) {
       this.updateBall();
     }
 
@@ -618,6 +700,40 @@ class Game {
     // Update power-ups
     if (this.ball) {
       this.powerups.update(this.deltaTime, this.ball);
+    }
+  }
+
+  /**
+   * Update ball position for guest players (interpolation from host state)
+   */
+  updateGuestBall() {
+    if (!this.targetBallState || !this.ball) return;
+    
+    // Use interpolation for smooth ball movement
+    // This reduces jitter from network latency variations
+    
+    // Interpolate position (helps with visual smoothing)
+    this.ball.x += (this.targetBallState.x - this.ball.x) * Game.BALL_INTERP_FACTOR;
+    this.ball.y += (this.targetBallState.y - this.ball.y) * Game.BALL_INTERP_FACTOR;
+    
+    // Apply velocity directly (for correct ball trail direction)
+    this.ball.vx = this.targetBallState.vx;
+    this.ball.vy = this.targetBallState.vy;
+
+    // Update ball trail
+    this._updateBallTrail();
+  }
+
+  /**
+   * Update the ball trail array (shared by updateBall and updateGuestBall)
+   * @private
+   */
+  _updateBallTrail() {
+    if (!this.ball) return;
+    
+    this.ballTrail.push({ x: this.ball.x, y: this.ball.y });
+    if (this.ballTrail.length > CONFIG.VISUALS.TRAIL_LENGTH) {
+      this.ballTrail.shift();
     }
   }
 
@@ -735,11 +851,8 @@ class Game {
     const speedMultiplier = this.powerups.modifiers.ballSpeedMultiplier;
     const gameSpeedMultiplier = this.powerups.modifiers.gameSpeedMultiplier;
 
-    // Add current position to trail
-    this.ballTrail.push({ x: this.ball.x, y: this.ball.y });
-    if (this.ballTrail.length > CONFIG.VISUALS.TRAIL_LENGTH) {
-      this.ballTrail.shift();
-    }
+    // Update ball trail
+    this._updateBallTrail();
 
     // Apply curve effect if active (cap vertical velocity to prevent extreme values)
     if (this.powerups.modifiers.curveAmount !== 0) {
@@ -912,6 +1025,10 @@ class Game {
   // Higher values = faster interpolation (more responsive but jerkier)
   // Lower values = slower interpolation (smoother but more latency)
   static PADDLE_SMOOTHING_FACTOR = 0.5; // Range: 0.1 (smooth) to 1.0 (instant)
+  // Ball interpolation factor for guest players (network sync smoothing)
+  // Higher values = faster tracking (more responsive but jerkier)
+  // Lower values = smoother tracking (less responsive but smoother visual)
+  static BALL_INTERP_FACTOR = 0.3; // Range: 0.1 (smooth) to 1.0 (instant)
 
   /**
    * Validate username
@@ -1025,12 +1142,15 @@ class Game {
     };
     
     // Ball update (guest only)
+    // Store target state for interpolation to reduce jitter from network latency
     this.multiplayer.onBallUpdate = (ballState) => {
       if (this.multiplayer.isGuest && this.ball) {
-        this.ball.x = ballState.x;
-        this.ball.y = ballState.y;
-        this.ball.vx = ballState.vx;
-        this.ball.vy = ballState.vy;
+        this.targetBallState = {
+          x: ballState.x,
+          y: ballState.y,
+          vx: ballState.vx,
+          vy: ballState.vy
+        };
       }
     };
     
@@ -1042,6 +1162,17 @@ class Game {
     // Match complete
     this.multiplayer.onMatchComplete = (data) => {
       this.state = 'gameover';
+      
+      // Update local stats for online matches
+      // Online multiplayer is 1v1, so opponent index is always the other player (0 or 1)
+      const isWinner = data.winnerIndex === this.multiplayer.playerIndex;
+      const myScoreIndex = this.multiplayer.playerIndex;
+      const opponentScoreIndex = 1 - myScoreIndex; // 1v1 game: opponent is always the other player
+      Storage.updateStats(isWinner, data.scores[myScoreIndex], data.scores[opponentScoreIndex]);
+      
+      // Hide pause button
+      this.setPauseButtonVisible(false);
+      
       Screens.showOnlineGameOver(data.winnerIndex, data.scores, this.multiplayer.playerIndex);
       disableGameplayTouchPrevention(this.canvas);
     };
@@ -1111,6 +1242,9 @@ class Game {
     
     // Hide menu overlay
     Screens.hide();
+    
+    // Show pause button for mobile users (same as startOnlineGame)
+    this.setPauseButtonVisible(true);
     
     // Start playing immediately (no countdown for reconnection)
     this.state = 'playing';
@@ -1229,6 +1363,9 @@ class Game {
     
     // Hide menu overlay
     Screens.hide();
+    
+    // Show pause button for mobile users
+    this.setPauseButtonVisible(true);
     
     // Start countdown
     this.startCountdown();
