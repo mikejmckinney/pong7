@@ -635,11 +635,10 @@ class Game {
     
     // Use interpolation for smooth ball movement
     // This reduces jitter from network latency variations
-    const BALL_INTERP_FACTOR = 0.3; // Balance between responsiveness and smoothness
     
     // Interpolate position (helps with visual smoothing)
-    this.ball.x += (this.targetBallState.x - this.ball.x) * BALL_INTERP_FACTOR;
-    this.ball.y += (this.targetBallState.y - this.ball.y) * BALL_INTERP_FACTOR;
+    this.ball.x += (this.targetBallState.x - this.ball.x) * Game.BALL_INTERP_FACTOR;
+    this.ball.y += (this.targetBallState.y - this.ball.y) * Game.BALL_INTERP_FACTOR;
     
     // Apply velocity directly (for correct ball trail direction)
     this.ball.vx = this.targetBallState.vx;
@@ -943,6 +942,10 @@ class Game {
   // Higher values = faster interpolation (more responsive but jerkier)
   // Lower values = slower interpolation (smoother but more latency)
   static PADDLE_SMOOTHING_FACTOR = 0.5; // Range: 0.1 (smooth) to 1.0 (instant)
+  // Ball interpolation factor for guest players (network sync smoothing)
+  // Higher values = faster tracking (more responsive but jerkier)
+  // Lower values = smoother tracking (less responsive but smoother visual)
+  static BALL_INTERP_FACTOR = 0.3; // Range: 0.1 (smooth) to 1.0 (instant)
 
   /**
    * Validate username
@@ -1078,9 +1081,10 @@ class Game {
       this.state = 'gameover';
       
       // Update local stats for online matches
+      // Online multiplayer is 1v1, so opponent index is always the other player (0 or 1)
       const isWinner = data.winnerIndex === this.multiplayer.playerIndex;
       const myScoreIndex = this.multiplayer.playerIndex;
-      const opponentScoreIndex = myScoreIndex === 0 ? 1 : 0;
+      const opponentScoreIndex = 1 - myScoreIndex; // 1v1 game: opponent is always the other player
       Storage.updateStats(isWinner, data.scores[myScoreIndex], data.scores[opponentScoreIndex]);
       
       Screens.showOnlineGameOver(data.winnerIndex, data.scores, this.multiplayer.playerIndex);
