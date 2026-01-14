@@ -340,11 +340,17 @@ const Screens = {
    * @private
    */
   _renderGlobalError(errorMsg) {
+    // Make technical errors more user-friendly
+    let displayMsg = errorMsg;
+    if (errorMsg === 'Supabase not available' || errorMsg === 'Leaderboard module not loaded') {
+      displayMsg = 'Online leaderboard is temporarily unavailable. Please try again later.';
+    }
+    
     return `
       <div class="leaderboard-error">
         <p class="error-icon">⚠</p>
         <p class="error-text">Unable to load leaderboard</p>
-        <p class="error-detail">${this.sanitizeHTML(errorMsg)}</p>
+        <p class="error-detail">${this.sanitizeHTML(displayMsg)}</p>
       </div>
     `;
   },

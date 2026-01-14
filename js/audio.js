@@ -128,11 +128,13 @@ class SoundManager {
 
   /**
    * Play game start countdown
+   * Beeps at 0, 1000, 2000ms to sync with visual "3", "2", "1" countdown
+   * Final higher pitched beep at 3000ms when game starts
    */
   gameStart() {
     const beeps = [330, 330, 330, 660]; // E4, E4, E4, E5
     beeps.forEach((freq, i) => {
-      setTimeout(() => this.playTone(freq, 0.2, 'square'), i * 400);
+      setTimeout(() => this.playTone(freq, 0.2, 'square'), i * 1000);
     });
   }
 

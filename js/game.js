@@ -43,6 +43,8 @@ class Game {
     this.multiplayer = null;
     this.opponentPaddleY = 0;  // For online mode paddle smoothing
     this.opponentTargetY = 0;
+    // Ball sync for guest players (interpolation to reduce jitter)
+    this.targetBallState = null;  // { x, y, vx, vy } - target ball state from host
 
     // Initialize systems
     this.controls = new Controls(this.canvas);
@@ -414,6 +416,7 @@ class Game {
     this.powerups.reset();
     this.ai.reset();
     this.controls.reset();
+    this.targetBallState = null;  // Reset ball sync state for online mode
 
     disableGameplayTouchPrevention(this.canvas);
   }
@@ -608,7 +611,10 @@ class Game {
     this.updatePaddles();
 
     // Update ball
-    if (this.ball.vx !== 0 || this.ball.vy !== 0) {
+    // For online guest players, interpolate ball position from host instead of running physics locally
+    if (this.mode === 'online' && this.multiplayer && this.multiplayer.isGuest) {
+      this.updateGuestBall();
+    } else if (this.ball.vx !== 0 || this.ball.vy !== 0) {
       this.updateBall();
     }
 
@@ -618,6 +624,31 @@ class Game {
     // Update power-ups
     if (this.ball) {
       this.powerups.update(this.deltaTime, this.ball);
+    }
+  }
+
+  /**
+   * Update ball position for guest players (interpolation from host state)
+   */
+  updateGuestBall() {
+    if (!this.targetBallState || !this.ball) return;
+    
+    // Use interpolation for smooth ball movement
+    // This reduces jitter from network latency variations
+    const BALL_INTERP_FACTOR = 0.3; // Balance between responsiveness and smoothness
+    
+    // Interpolate position (helps with visual smoothing)
+    this.ball.x += (this.targetBallState.x - this.ball.x) * BALL_INTERP_FACTOR;
+    this.ball.y += (this.targetBallState.y - this.ball.y) * BALL_INTERP_FACTOR;
+    
+    // Apply velocity directly (for correct ball trail direction)
+    this.ball.vx = this.targetBallState.vx;
+    this.ball.vy = this.targetBallState.vy;
+
+    // Add current position to trail (same as updateBall does)
+    this.ballTrail.push({ x: this.ball.x, y: this.ball.y });
+    if (this.ballTrail.length > CONFIG.VISUALS.TRAIL_LENGTH) {
+      this.ballTrail.shift();
     }
   }
 
@@ -1025,12 +1056,15 @@ class Game {
     };
     
     // Ball update (guest only)
+    // Store target state for interpolation to reduce jitter from network latency
     this.multiplayer.onBallUpdate = (ballState) => {
       if (this.multiplayer.isGuest && this.ball) {
-        this.ball.x = ballState.x;
-        this.ball.y = ballState.y;
-        this.ball.vx = ballState.vx;
-        this.ball.vy = ballState.vy;
+        this.targetBallState = {
+          x: ballState.x,
+          y: ballState.y,
+          vx: ballState.vx,
+          vy: ballState.vy
+        };
       }
     };
     
@@ -1042,6 +1076,13 @@ class Game {
     // Match complete
     this.multiplayer.onMatchComplete = (data) => {
       this.state = 'gameover';
+      
+      // Update local stats for online matches
+      const isWinner = data.winnerIndex === this.multiplayer.playerIndex;
+      const myScoreIndex = this.multiplayer.playerIndex;
+      const opponentScoreIndex = myScoreIndex === 0 ? 1 : 0;
+      Storage.updateStats(isWinner, data.scores[myScoreIndex], data.scores[opponentScoreIndex]);
+      
       Screens.showOnlineGameOver(data.winnerIndex, data.scores, this.multiplayer.playerIndex);
       disableGameplayTouchPrevention(this.canvas);
     };
